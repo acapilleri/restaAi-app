@@ -1,0 +1,62 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Stat matches snapshot 1`] = `
+<View
+  style={
+    [
+      {
+        "backgroundColor": "#fff",
+        "borderColor": "#f4f4f5",
+        "borderRadius": 16,
+        "borderWidth": 1,
+        "elevation": 2,
+        "padding": 16,
+        "shadowColor": "#000",
+        "shadowOffset": {
+          "height": 1,
+          "width": 0,
+        },
+        "shadowOpacity": 0.05,
+        "shadowRadius": 2,
+      },
+      {
+        "flex": 1,
+      },
+    ]
+  }
+>
+  <Text
+    style={
+      {
+        "color": "#71717a",
+        "fontSize": 12,
+      }
+    }
+  >
+    obiettivo
+  </Text>
+  <Text
+    style={
+      {
+        "color": "#18181b",
+        "fontSize": 22,
+        "fontWeight": "600",
+        "marginTop": 4,
+      }
+    }
+  >
+    → 70
+  </Text>
+  <Text
+    style={
+      {
+        "color": "#a1a1aa",
+        "fontSize": 12,
+        "marginTop": 4,
+      }
+    }
+  >
+    −2 finora
+  </Text>
+</View>
+`;

@@ -1,0 +1,100 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Pill applies active style when active=true 1`] = `
+<View
+  style={
+    [
+      {
+        "borderRadius": 9999,
+        "paddingHorizontal": 12,
+        "paddingVertical": 6,
+      },
+      {
+        "backgroundColor": "#d1fae5",
+      },
+    ]
+  }
+>
+  <Text
+    style={
+      [
+        {
+          "fontSize": 12,
+          "fontWeight": "500",
+        },
+        {
+          "color": "#047857",
+        },
+      ]
+    }
+  >
+    Attivo
+  </Text>
+</View>
+`;
+
+exports[`Pill applies inactive when active=false 1`] = `
+<View
+  style={
+    [
+      {
+        "borderRadius": 9999,
+        "paddingHorizontal": 12,
+        "paddingVertical": 6,
+      },
+      {
+        "backgroundColor": "#f4f4f5",
+      },
+    ]
+  }
+>
+  <Text
+    style={
+      [
+        {
+          "fontSize": 12,
+          "fontWeight": "500",
+        },
+        {
+          "color": "#52525b",
+        },
+      ]
+    }
+  >
+    Inattivo
+  </Text>
+</View>
+`;
+
+exports[`Pill defaults to inactive style 1`] = `
+<View
+  style={
+    [
+      {
+        "borderRadius": 9999,
+        "paddingHorizontal": 12,
+        "paddingVertical": 6,
+      },
+      {
+        "backgroundColor": "#f4f4f5",
+      },
+    ]
+  }
+>
+  <Text
+    style={
+      [
+        {
+          "fontSize": 12,
+          "fontWeight": "500",
+        },
+        {
+          "color": "#52525b",
+        },
+      ]
+    }
+  >
+    Test
+  </Text>
+</View>
+`;

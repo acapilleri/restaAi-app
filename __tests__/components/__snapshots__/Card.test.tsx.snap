@@ -1,0 +1,51 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Card renders children 1`] = `
+<View
+  style={
+    [
+      {
+        "backgroundColor": "#fff",
+        "borderColor": "#f4f4f5",
+        "borderRadius": 16,
+        "borderWidth": 1,
+        "elevation": 2,
+        "padding": 16,
+        "shadowColor": "#000",
+        "shadowOffset": {
+          "height": 1,
+          "width": 0,
+        },
+        "shadowOpacity": 0.05,
+        "shadowRadius": 2,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#fff",
+          "borderColor": "#f4f4f5",
+          "borderRadius": 16,
+          "borderWidth": 1,
+          "elevation": 2,
+          "padding": 16,
+          "shadowColor": "#000",
+          "shadowOffset": {
+            "height": 1,
+            "width": 0,
+          },
+          "shadowOpacity": 0.05,
+          "shadowRadius": 2,
+        },
+        undefined,
+      ]
+    }
+  >
+    Inner
+  </View>
+</View>
+`;

@@ -1,0 +1,91 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ScreenWrapper accepts accent prop 1`] = `
+<View
+  style={
+    {
+      "backgroundColor": "#fafafa",
+      "flex": 1,
+    }
+  }
+>
+  <View
+    style={
+      [
+        {
+          "paddingBottom": 12,
+          "paddingHorizontal": 16,
+          "paddingTop": 16,
+        },
+        {
+          "backgroundColor": "#8b5cf6",
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+          "opacity": 0.9,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#fff",
+            "fontSize": 12,
+          }
+        }
+      >
+        9:41
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#fff",
+            "fontSize": 12,
+          }
+        }
+      >
+        AI Diet
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#fff",
+            "fontSize": 12,
+          }
+        }
+      >
+        100%
+      </Text>
+    </View>
+    <Text
+      style={
+        {
+          "color": "#fff",
+          "fontSize": 20,
+          "fontWeight": "600",
+          "letterSpacing": -0.5,
+          "marginTop": 16,
+        }
+      }
+    >
+      Profilo
+    </Text>
+  </View>
+  <View
+    style={
+      {
+        "flex": 1,
+        "overflow": "hidden",
+        "padding": 16,
+      }
+    }
+  />
+</View>
+`;

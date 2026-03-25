@@ -1,0 +1,363 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert } from 'react-native';
+import { useMutation } from '@tanstack/react-query';
+import { ActionCable } from '@kesha-antonov/react-native-action-cable';
+import { confirmWeight, getChatHistory, sendMessage, setMessageReaction } from '../api/chat';
+import { CABLE_URL } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import type { AiMessage, MessageReaction } from '../types/chat';
+
+function makeId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.round(Math.random() * 100000)}`;
+}
+
+export function useChat() {
+  const { token } = useAuth();
+  const [messages, setMessages] = useState<AiMessage[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [isHistoryRefreshing, setIsHistoryRefreshing] = useState(false);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [nextBeforeId, setNextBeforeId] = useState<string | null>(null);
+  const [reactionPickerForId, setReactionPickerForId] = useState<string | null>(null);
+  const [quickChips, setQuickChips] = useState<string[]>([
+    'Registra peso',
+    'Alternative pranzo',
+    'Segna pranzo',
+  ]);
+  const seenIds = useRef(new Set<string>());
+  const lastConversationIdRef = useRef<string>('global');
+
+  const mapHistoryMessage = useCallback((raw: {
+    id: string;
+    role: 'user' | 'assistant';
+    text: string;
+    timestamp: string;
+    reaction?: MessageReaction | null;
+  }): AiMessage => ({
+    id: raw.id,
+    role: raw.role,
+    text: raw.text,
+    cards: [],
+    timestamp: new Date(raw.timestamp),
+    reaction: raw.reaction ?? null,
+  }), []);
+
+  const loadLatestHistory = useCallback(async () => {
+    setIsHistoryLoading(true);
+    try {
+      const res = await getChatHistory({ limit: 10 });
+      const items = res.messages.map((m) =>
+        mapHistoryMessage({
+          id: m.id,
+          role: m.role,
+          text: m.text,
+          timestamp: m.timestamp,
+          reaction: (m.reaction ?? null) as MessageReaction | null,
+        }),
+      );
+      setMessages(items);
+      setHasMoreHistory(Boolean(res.page?.has_more));
+      setNextBeforeId(res.page?.next_before_id ?? null);
+      seenIds.current = new Set(items.map((m) => m.id));
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : 'Errore di rete';
+      Alert.alert('Storico non disponibile', msg);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  }, [mapHistoryMessage]);
+
+  const refreshLatestHistory = useCallback(async () => {
+    setIsHistoryRefreshing(true);
+    try {
+      const res = await getChatHistory({ limit: 10 });
+      const items = res.messages.map((m) =>
+        mapHistoryMessage({
+          id: m.id,
+          role: m.role,
+          text: m.text,
+          timestamp: m.timestamp,
+          reaction: (m.reaction ?? null) as MessageReaction | null,
+        }),
+      );
+      setMessages(items);
+      setHasMoreHistory(Boolean(res.page?.has_more));
+      setNextBeforeId(res.page?.next_before_id ?? null);
+      seenIds.current = new Set(items.map((m) => m.id));
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : 'Errore di rete';
+      Alert.alert('Refresh fallito', msg);
+    } finally {
+      setIsHistoryRefreshing(false);
+    }
+  }, [mapHistoryMessage]);
+
+  const loadOlderHistory = useCallback(async () => {
+    if (isLoadingOlder || !hasMoreHistory || !nextBeforeId) return;
+    setIsLoadingOlder(true);
+    try {
+      const res = await getChatHistory({ limit: 10, before_id: nextBeforeId });
+      const older = res.messages
+        .map((m) =>
+          mapHistoryMessage({
+            id: m.id,
+            role: m.role,
+            text: m.text,
+            timestamp: m.timestamp,
+            reaction: (m.reaction ?? null) as MessageReaction | null,
+          }),
+        )
+        .filter((m) => !seenIds.current.has(m.id));
+
+      older.forEach((m) => seenIds.current.add(m.id));
+      setMessages((prev) => [...older, ...prev]);
+      setHasMoreHistory(Boolean(res.page?.has_more));
+      setNextBeforeId(res.page?.next_before_id ?? null);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : 'Errore di rete';
+      Alert.alert('Caricamento messaggi precedenti fallito', msg);
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  }, [hasMoreHistory, isLoadingOlder, mapHistoryMessage, nextBeforeId]);
+
+  useEffect(() => {
+    if (!token) {
+      setMessages([]);
+      setHasMoreHistory(false);
+      setNextBeforeId(null);
+      seenIds.current.clear();
+      return;
+    }
+    loadLatestHistory();
+  }, [loadLatestHistory, token]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const consumerUrl = `${CABLE_URL}?token=${encodeURIComponent(token)}`;
+
+    // Ensure stale consumer/subscriptions are dropped before re-subscribing.
+    ActionCable.disconnectConsumer(consumerUrl);
+    const consumer = ActionCable.getOrCreateConsumer(consumerUrl);
+
+    const subscription = consumer.subscriptions.create({
+      channel: 'ChatChannel',
+      conversation_id: 'global',
+    });
+
+    subscription
+      .on('received', (raw: unknown) => {
+        let data = raw;
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch {
+            return;
+          }
+        }
+        if (!data || typeof data !== 'object') return;
+
+        const frame = (data as { message?: unknown }).message ?? data;
+        if (!frame || typeof frame !== 'object') return;
+
+        const event = (frame as { event?: unknown }).event;
+        const payload = (frame as { payload?: unknown }).payload;
+        if (typeof event !== 'string' || !event.startsWith('chat.')) return;
+        if (!payload || typeof payload !== 'object') return;
+
+        const typedPayload = payload as Record<string, unknown>;
+
+        if (event === 'chat.message') {
+          const id =
+            typeof typedPayload.id === 'string' && typedPayload.id
+              ? typedPayload.id
+              : typeof typedPayload.id === 'number'
+                ? String(typedPayload.id)
+                : makeId('assistant');
+          const text = typeof typedPayload.text === 'string' ? typedPayload.text : '';
+          if (!text.trim()) return;
+          if (seenIds.current.has(id)) return;
+          seenIds.current.add(id);
+
+          // Keep dedup memory bounded for long sessions.
+          if (seenIds.current.size > 500) seenIds.current.clear();
+
+          const aiMsg: AiMessage = {
+            id,
+            role: 'assistant',
+            text,
+            cards: Array.isArray(typedPayload.cards) ? typedPayload.cards : [],
+            timestamp:
+              typeof typedPayload.timestamp === 'string'
+                ? new Date(typedPayload.timestamp)
+                : new Date(),
+          };
+          setMessages((prev) => [...prev, aiMsg]);
+
+          if (Array.isArray(typedPayload.quick_chips) && typedPayload.quick_chips.length > 0) {
+            setQuickChips(typedPayload.quick_chips as string[]);
+          }
+          setIsTyping(false);
+          return;
+        }
+
+        if (event === 'chat.reaction') {
+          const messageIdRaw = typedPayload.message_id;
+          const message_id =
+            typeof messageIdRaw === 'string'
+              ? messageIdRaw
+              : typeof messageIdRaw === 'number'
+                ? String(messageIdRaw)
+                : null;
+          const reactionRaw = typedPayload.reaction;
+          const reaction: MessageReaction | null =
+            reactionRaw === 'like' ? 'like' : reactionRaw === 'dislike' ? 'dislike' : null;
+          if (!message_id) return;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === message_id
+                ? { ...m, reaction, reactionPending: false }
+                : m,
+            ),
+          );
+          return;
+        }
+
+        if (event === 'chat.status' && typedPayload.status === 'done') {
+          setIsTyping(false);
+          return;
+        }
+
+        if (event === 'chat.error') {
+          setIsTyping(false);
+        }
+      })
+      .on('connected', () => {
+        console.log('[Chat] connesso');
+      })
+      .on('disconnected', () => {
+        console.log('[Chat] disconnesso');
+      });
+
+    return () => {
+      subscription.unsubscribe();
+      ActionCable.disconnectConsumer(consumerUrl);
+    };
+  }, [token]);
+
+  const sendMutation = useMutation({
+    mutationFn: async (text: string) => {
+      await sendMessage(text);
+    },
+    onMutate: (text) => {
+      const userMsg: AiMessage = {
+        id: makeId('user'),
+        role: 'user',
+        text,
+        cards: [],
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      setIsTyping(true);
+    },
+    onError: (err) => {
+      setIsTyping(false);
+      const msg =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : 'Errore di rete';
+      if (typeof __DEV__ !== 'undefined' && __DEV__) {
+        console.warn('[Chat] invio messaggio fallito:', err);
+      }
+      Alert.alert('Messaggio non inviato', msg);
+    },
+  });
+
+  const send = useCallback(
+    (text: string) => {
+      if (!text.trim()) return;
+      sendMutation.mutate(text);
+    },
+    [sendMutation],
+  );
+
+  const confirmChatWeight = useCallback(async (kg: number) => {
+    await confirmWeight(kg);
+  }, []);
+
+  const reactionMutation = useMutation({
+    mutationFn: async (vars: { message_id: string; reaction: MessageReaction | null }) => {
+      return setMessageReaction({
+        message_id: vars.message_id,
+        reaction: vars.reaction,
+        conversation_id: lastConversationIdRef.current,
+      });
+    },
+    onError: (err, vars) => {
+      const msg =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : 'Errore di rete';
+      if (typeof __DEV__ !== 'undefined' && __DEV__) {
+        console.warn('[Chat] reaction sync fallito:', err);
+      }
+      // Keep local reaction but mark as pending so user can retry by toggling.
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === vars.message_id ? { ...m, reactionPending: true } : m,
+        ),
+      );
+      Alert.alert('Reazione non sincronizzata', msg);
+    },
+  });
+
+  const openReactionPicker = useCallback((messageId: string) => {
+    setReactionPickerForId(messageId);
+  }, []);
+
+  const closeReactionPicker = useCallback(() => {
+    setReactionPickerForId(null);
+  }, []);
+
+  const setReaction = useCallback(
+    (messageId: string, reaction: MessageReaction | null) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId
+            ? { ...m, reaction, reactionPending: true }
+            : m,
+        ),
+      );
+      reactionMutation.mutate({ message_id: messageId, reaction });
+      setReactionPickerForId(null);
+    },
+    [reactionMutation],
+  );
+
+  const reactionUi = useMemo(
+    () => ({ pickerForId: reactionPickerForId }),
+    [reactionPickerForId],
+  );
+
+  return {
+    messages,
+    quickChips,
+    isTyping,
+    isHistoryLoading,
+    isHistoryRefreshing,
+    isLoadingOlder,
+    hasMoreHistory,
+    isSending: sendMutation.isPending,
+    sendMessage: send,
+    loadLatestHistory,
+    refreshLatestHistory,
+    loadOlderHistory,
+    confirmWeight: confirmChatWeight,
+    reactionUi,
+    openReactionPicker,
+    closeReactionPicker,
+    setReaction,
+  };
+}
