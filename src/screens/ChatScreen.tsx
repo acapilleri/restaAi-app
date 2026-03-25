@@ -13,11 +13,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { MessageRenderer } from '../components/chat/MessageRenderer';
 import { TypingIndicator } from '../components/chat/TypingIndicator';
 import { useChat } from '../hooks/useChat';
+import type { TabParamList } from '../navigation/types';
 
 export function ChatScreen() {
+  const route = useRoute<RouteProp<TabParamList, 'Chat'>>();
   const {
     messages,
     isTyping,
@@ -41,6 +44,10 @@ export function ChatScreen() {
   const contentHeightRef = useRef(0);
   const viewportHeightRef = useRef(0);
   const isNearBottomRef = useRef(true);
+  const lastHandledTriggerRef = useRef<string | null>(null);
+  const initialPrompt = route.params?.initialPrompt?.trim() ?? '';
+  const autoSend = route.params?.autoSend === true;
+  const triggerId = route.params?.triggerId;
 
   const handleSend = () => {
     if (!input.trim()) return;
@@ -48,6 +55,15 @@ export function ChatScreen() {
     setInput('');
     listRef.current?.scrollToEnd({ animated: true });
   };
+
+  useEffect(() => {
+    if (!autoSend || !initialPrompt) return;
+    const key = triggerId ?? initialPrompt;
+    if (lastHandledTriggerRef.current === key) return;
+    lastHandledTriggerRef.current = key;
+    sendMessage(initialPrompt);
+    listRef.current?.scrollToEnd({ animated: true });
+  }, [autoSend, initialPrompt, sendMessage, triggerId]);
 
   useEffect(() => {
     const becameLonger = messages.length > lastMessageCountRef.current;

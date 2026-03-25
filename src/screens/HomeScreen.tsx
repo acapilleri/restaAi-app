@@ -88,20 +88,6 @@ const MOCK_MEALS: DietPlanMeal[] = [
   },
 ];
 
-function formatMealMacros(meal: DietPlanMeal): string {
-  const k = meal.calories;
-  const p = meal.protein;
-  const c = meal.carbs;
-  const f = meal.fat;
-  const hasMacros = [p, c, f].some((v) => v != null && Number.isFinite(v) && v > 0);
-  const kcalPart = `${k} kcal`;
-  if (!hasMacros) return kcalPart;
-  const pg = p != null && Number.isFinite(p) ? `${p}g` : '—';
-  const cg = c != null && Number.isFinite(c) ? `${c}g` : '—';
-  const fg = f != null && Number.isFinite(f) ? `${f}g` : '—';
-  return `${kcalPart} | P ${pg} C ${cg} G ${fg}`;
-}
-
 function formatFoodsWithSpaces(foods: string | undefined | null): string {
   let s = typeof foods === 'string' ? foods : '';
   if (!s.trim()) return s;
@@ -240,16 +226,6 @@ export function HomeScreen() {
     if (token && !user) refreshUser();
   }, [token, user, refreshUser]);
 
-  if (loading && !dashboard) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   const dashUser = dashboard?.user as { name?: string; first_name?: string; firstName?: string } | undefined;
   const dashboardName =
     dashUser?.first_name?.trim() ||
@@ -263,6 +239,16 @@ export function HomeScreen() {
   const currentWeight = dashUserData?.current_weight ?? dashUserData?.weight ?? undefined;
   const targetWeight = dashUserData?.target_weight ?? dashUserData?.goal_weight_kg ?? undefined;
   const weightLost = dashUserData?.weight_lost ?? undefined;
+
+  if (loading && !dashboard) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -376,7 +362,10 @@ export function HomeScreen() {
                   const hasMacros = [item.protein, item.carbs, item.fat].some((v) => v != null && Number.isFinite(v) && v > 0);
                   return (
                     <TouchableOpacity
-                      style={[styles.mealCardSlider, isSelected && styles.mealCardSliderSelected]}
+                      style={[
+                        styles.mealCardSlider,
+                        isSelected && styles.mealCardSliderSelected,
+                      ]}
                       onPress={() => {
                         hapticLight();
                         setSelectedMealIndex(index);
@@ -428,8 +417,10 @@ export function HomeScreen() {
             <FlatList
               horizontal
               data={recipes}
+              style={styles.altList}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
+                <View style={styles.altItemWrap}>
                 <View style={styles.altCardWrap}>
                   <RecipeAlternativeCard
                     recipeId={item.id}
@@ -441,10 +432,12 @@ export function HomeScreen() {
                     fat={item.fat}
                   />
                 </View>
+                </View>
               )}
               showsHorizontalScrollIndicator={false}
               snapToInterval={190}
               decelerationRate="fast"
+              removeClippedSubviews={false}
               contentContainerStyle={styles.altListContent}
             />
           )}
@@ -505,6 +498,7 @@ function makeHomeStyles(s: (px: number) => number) {
     container: { flex: 1, backgroundColor: colors.bgPrimary },
     scroll: { flex: 1 },
     pad: {
+      position: 'relative' as const,
       paddingHorizontal: s(13),
       paddingTop: s(10),
       paddingBottom: s(24),
@@ -647,12 +641,25 @@ function makeHomeStyles(s: (px: number) => number) {
       marginBottom: 10,
       marginHorizontal: 16,
     },
+    altList: {
+      overflow: 'visible' as const,
+    },
     altListContent: {
       paddingHorizontal: 16,
       paddingRight: 24,
+      paddingTop: 14,
+      overflow: 'visible' as const,
+      zIndex: 1,
+    },
+    altItemWrap: {
+      overflow: 'visible' as const,
+      position: 'relative' as const,
+      zIndex: 1,
+      elevation: 1,
     },
     altCardWrap: {
       marginRight: 10,
+      overflow: 'visible' as const,
     },
     loadingBox: { padding: 24, alignItems: 'center' as const },
     errorText: { fontSize: 14, color: colors.amber, marginBottom: 8 },

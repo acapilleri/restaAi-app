@@ -11,8 +11,9 @@ import { DietScreen } from '../screens/DietScreen';
 import { FotoScreen } from '../screens/FotoScreen';
 import { ProfiloScreen } from '../screens/ProfiloScreen';
 import { HealthScreen } from '../screens/HealthScreen';
+import type { TabParamList } from './types';
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<TabParamList>();
 
 const TAB_ICONS: Record<string, string> = {
   Today: 'home',
