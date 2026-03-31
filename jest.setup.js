@@ -9,6 +9,8 @@ jest.mock('react-native-gesture-handler', () => {
   return { GestureHandlerRootView: View };
 });
 
+jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
+
 // react-native-vector-icons: replace with a simple component
 jest.mock('react-native-vector-icons/Ionicons', () => 'Icon');
 
@@ -53,15 +55,31 @@ jest.mock('react-native-image-picker', () => ({
 }));
 
 // Apple HealthKit (Nitro / iOS only — stub in Jest)
-jest.mock('@kingstinct/react-native-healthkit', () => ({
-  isHealthDataAvailableAsync: jest.fn(() => Promise.resolve(false)),
-  isHealthDataAvailable: jest.fn(() => false),
-  requestAuthorization: jest.fn(() => Promise.resolve(false)),
-  queryStatisticsForQuantity: jest.fn(() =>
-    Promise.resolve({ sumQuantity: { quantity: 0, unit: 'count' }, sources: [] }),
-  ),
-  getMostRecentQuantitySample: jest.fn(() => Promise.resolve(undefined)),
-}));
+jest.mock('@kingstinct/react-native-healthkit', () => {
+  const AuthorizationRequestStatus = { unknown: 0, shouldRequest: 1, unnecessary: 2 };
+  const CategoryValueSleepAnalysis = {
+    inBed: 0,
+    asleepUnspecified: 1,
+    awake: 2,
+    asleepCore: 3,
+    asleepDeep: 4,
+    asleepREM: 5,
+  };
+  return {
+    AuthorizationRequestStatus,
+    CategoryValueSleepAnalysis,
+    isHealthDataAvailableAsync: jest.fn(() => Promise.resolve(false)),
+    isHealthDataAvailable: jest.fn(() => false),
+    requestAuthorization: jest.fn(() => Promise.resolve(false)),
+    getRequestStatusForAuthorization: jest.fn(() => Promise.resolve(AuthorizationRequestStatus.unnecessary)),
+    getPreferredUnits: jest.fn(() => Promise.resolve([])),
+    queryStatisticsForQuantity: jest.fn(() =>
+      Promise.resolve({ sumQuantity: { quantity: 0, unit: 'count' }, sources: [] }),
+    ),
+    queryQuantitySamples: jest.fn(() => Promise.resolve([])),
+    queryCategorySamples: jest.fn(() => Promise.resolve([])),
+  };
+});
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   setItem: jest.fn(() => Promise.resolve()),
@@ -69,3 +87,20 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   removeItem: jest.fn(() => Promise.resolve()),
   clear: jest.fn(() => Promise.resolve()),
 }));
+
+// Theme: avoid requiring ThemeProvider in every test; default to light palette.
+jest.mock('./src/context/ThemeContext', () => {
+  const React = require('react');
+  const { lightColors } = require('./src/theme/colors');
+  const value = {
+    colors: lightColors,
+    preference: 'system',
+    setPreference: jest.fn(() => Promise.resolve()),
+    resolvedScheme: 'light',
+    isDark: false,
+  };
+  return {
+    ThemeProvider: ({ children }) => children,
+    useTheme: () => value,
+  };
+});

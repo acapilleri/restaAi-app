@@ -25,8 +25,10 @@ import { useQuery } from '@tanstack/react-query';
 import { RecipeAlternativeCard } from '../components/RecipeAlternativeCard';
 import type { DashboardResponse, DashboardUser } from '../api/dashboard';
 import type { DietPlanMeal } from '../api/dietPlan';
-import { colors } from '../theme/colors';
+import type { AppColors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
+import { DrawerMenuButton } from '../components/navigation/DrawerMenuButton';
 
 const DAY_NAMES_IT = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
 const MEAL_LABELS = ['colazione', 'pranzo', 'spuntino', 'cena'];
@@ -113,20 +115,19 @@ function formatFoodsWithSpaces(foods: string | undefined | null): string {
 const MOCKUP_WIDTH = 240;
 
 function SkeletonCard() {
+  const { colors } = useTheme();
   return (
-    <View style={skeletonStyles.card} />
+    <View
+      style={{
+        width: 180,
+        height: 130,
+        backgroundColor: colors.bgSecondary,
+        borderRadius: 14,
+        marginRight: 10,
+      }}
+    />
   );
 }
-
-const skeletonStyles = StyleSheet.create({
-  card: {
-    width: 180,
-    height: 130,
-    backgroundColor: '#E8E8E8',
-    borderRadius: 14,
-    marginRight: 10,
-  },
-});
 
 function formatDate(s: string) {
   try {
@@ -139,10 +140,11 @@ function formatDate(s: string) {
 
 export function HomeScreen() {
   const { user, token, refreshUser } = useAuth();
+  const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const scale = width / MOCKUP_WIDTH;
   const s = (px: number) => Math.round(px * scale);
-  const styles = useMemo(() => makeHomeStyles(s), [width]);
+  const styles = useMemo(() => makeHomeStyles(s, colors), [width, colors]);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -269,13 +271,14 @@ export function HomeScreen() {
             </View>
           ) : null}
           <View style={styles.topRow}>
-            <View>
+            <View style={styles.topRowCenter}>
               <Text style={styles.date}>{dateStr}</Text>
               <Text style={styles.greeting}>Ciao, {name}</Text>
             </View>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{(name[0] || 'U').toUpperCase()}</Text>
             </View>
+            <DrawerMenuButton placement="trailing" />
           </View>
 
           {planSummary ? (
@@ -493,7 +496,7 @@ export function HomeScreen() {
   );
 }
 
-function makeHomeStyles(s: (px: number) => number) {
+function makeHomeStyles(s: (px: number) => number, colors: AppColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bgPrimary },
     scroll: { flex: 1 },
@@ -508,6 +511,9 @@ function makeHomeStyles(s: (px: number) => number) {
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: s(10),
+    },
+    topRowCenter: {
+      flex: 1,
     },
     date: { fontSize: s(10), color: colors.textSecondary, fontWeight: '500' as const },
     greeting: { fontSize: s(16), fontWeight: '500' as const, color: colors.textPrimary },
@@ -635,7 +641,7 @@ function makeHomeStyles(s: (px: number) => number) {
     altTitle: {
       fontSize: 13,
       fontWeight: '500' as const,
-      color: '#1D9E75',
+      color: colors.primary,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.8,
       marginBottom: 10,

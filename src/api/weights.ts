@@ -14,6 +14,17 @@ export type WeightsResponse = {
   stats?: WeightsStats;
 };
 
+/** Ultimo peso noto: preferisce stats.current se presente, altrimenti la pesata con data più recente. */
+export function latestWeightKgFromResponse(data: WeightsResponse): number | null {
+  const s = data.stats?.current;
+  if (s != null && typeof s === 'number' && !Number.isNaN(s)) return s;
+  const list = data.weights;
+  if (!list.length) return null;
+  const sorted = [...list].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const v = sorted[0]?.value;
+  return v != null && !Number.isNaN(v) ? v : null;
+}
+
 /** Backend restituisce { weights: [ { id, value_kg, recorded_on } ] } */
 function normalizeWeightsResponse(data: unknown): WeightsResponse {
   if (!data || typeof data !== 'object') return { weights: [] };

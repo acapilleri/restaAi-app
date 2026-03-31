@@ -1,11 +1,28 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
 import { ActionCable } from '@kesha-antonov/react-native-action-cable';
-import { confirmWeight, getChatHistory, sendMessage, setMessageReaction } from '../api/chat';
+import {
+  confirmChatAction as confirmChatActionApi,
+  getChatHistory,
+  sendMessage,
+  setMessageReaction,
+  type ConfirmChatPayload,
+  type SendMessageOptions,
+} from '../api/chat';
+import { normalizeChatCardsFromWire } from '../chat/normalizeWsCards';
+import { parseCardsFromHistory } from '../chat/parseCards';
+import {
+  APPLE_HEALTH_STORAGE_KEYS,
+  compactAppleHealthPayload,
+  fetchAppleHealthSnapshotCached,
+  serializeAppleHealthSnapshot,
+} from '../services/appleHealth';
 import { CABLE_URL } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import type { AiMessage, MessageReaction } from '../types/chat';
+import { hapticIncomingSoft, hapticTypingStart } from '../utils/haptics';
 
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.round(Math.random() * 100000)}`;
@@ -21,25 +38,29 @@ export function useChat() {
   const [hasMoreHistory, setHasMoreHistory] = useState(false);
   const [nextBeforeId, setNextBeforeId] = useState<string | null>(null);
   const [reactionPickerForId, setReactionPickerForId] = useState<string | null>(null);
-  const [quickChips, setQuickChips] = useState<string[]>([
-    'Registra peso',
-    'Alternative pranzo',
-    'Segna pranzo',
-  ]);
+  const [quickChips, setQuickChips] = useState<string[]>([]);
   const seenIds = useRef(new Set<string>());
   const lastConversationIdRef = useRef<string>('global');
+  const typingHapticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTypingHapticTimer = useCallback(() => {
+    if (!typingHapticTimerRef.current) return;
+    clearTimeout(typingHapticTimerRef.current);
+    typingHapticTimerRef.current = null;
+  }, []);
 
   const mapHistoryMessage = useCallback((raw: {
     id: string;
-    role: 'user' | 'assistant';
+    role: 'user' | 'assistant' | 'system_log';
     text: string;
     timestamp: string;
     reaction?: MessageReaction | null;
+    cards?: unknown;
   }): AiMessage => ({
     id: raw.id,
     role: raw.role,
     text: raw.text,
-    cards: [],
+    cards: parseCardsFromHistory(raw.cards),
     timestamp: new Date(raw.timestamp),
     reaction: raw.reaction ?? null,
   }), []);
@@ -55,6 +76,7 @@ export function useChat() {
           text: m.text,
           timestamp: m.timestamp,
           reaction: (m.reaction ?? null) as MessageReaction | null,
+          cards: m.cards,
         }),
       );
       setMessages(items);
@@ -81,6 +103,7 @@ export function useChat() {
           text: m.text,
           timestamp: m.timestamp,
           reaction: (m.reaction ?? null) as MessageReaction | null,
+          cards: m.cards,
         }),
       );
       setMessages(items);
@@ -109,6 +132,7 @@ export function useChat() {
             text: m.text,
             timestamp: m.timestamp,
             reaction: (m.reaction ?? null) as MessageReaction | null,
+            cards: m.cards,
           }),
         )
         .filter((m) => !seenIds.current.has(m.id));
@@ -163,7 +187,14 @@ export function useChat() {
         }
         if (!data || typeof data !== 'object') return;
 
-        const frame = (data as { message?: unknown }).message ?? data;
+        let frame: unknown = (data as { message?: unknown }).message ?? data;
+        if (typeof frame === 'string') {
+          try {
+            frame = JSON.parse(frame);
+          } catch {
+            return;
+          }
+        }
         if (!frame || typeof frame !== 'object') return;
 
         const event = (frame as { event?: unknown }).event;
@@ -173,26 +204,35 @@ export function useChat() {
 
         const typedPayload = payload as Record<string, unknown>;
 
-        if (event === 'chat.message') {
+        if (event === 'chat.message' || event === 'chat.system_log') {
           const id =
             typeof typedPayload.id === 'string' && typedPayload.id
               ? typedPayload.id
               : typeof typedPayload.id === 'number'
                 ? String(typedPayload.id)
-                : makeId('assistant');
+                : makeId(event === 'chat.system_log' ? 'system-log' : 'assistant');
           const text = typeof typedPayload.text === 'string' ? typedPayload.text : '';
-          if (!text.trim()) return;
+          const cardsWire = Array.isArray(typedPayload.cards) ? typedPayload.cards : [];
+          if (!text.trim() && cardsWire.length === 0) return;
           if (seenIds.current.has(id)) return;
           seenIds.current.add(id);
 
           // Keep dedup memory bounded for long sessions.
           if (seenIds.current.size > 500) seenIds.current.clear();
 
+          const payloadRole = typedPayload.role;
+          const role: AiMessage['role'] =
+            payloadRole === 'user' || payloadRole === 'assistant' || payloadRole === 'system_log'
+              ? payloadRole
+              : event === 'chat.system_log'
+                ? 'system_log'
+                : 'assistant';
+
           const aiMsg: AiMessage = {
             id,
-            role: 'assistant',
+            role,
             text,
-            cards: Array.isArray(typedPayload.cards) ? typedPayload.cards : [],
+            cards: role === 'assistant' ? normalizeChatCardsFromWire(cardsWire) : [],
             timestamp:
               typeof typedPayload.timestamp === 'string'
                 ? new Date(typedPayload.timestamp)
@@ -200,10 +240,12 @@ export function useChat() {
           };
           setMessages((prev) => [...prev, aiMsg]);
 
-          if (Array.isArray(typedPayload.quick_chips) && typedPayload.quick_chips.length > 0) {
+          if (Array.isArray(typedPayload.quick_chips)) {
             setQuickChips(typedPayload.quick_chips as string[]);
           }
+          clearTypingHapticTimer();
           setIsTyping(false);
+          void hapticIncomingSoft();
           return;
         }
 
@@ -230,11 +272,13 @@ export function useChat() {
         }
 
         if (event === 'chat.status' && typedPayload.status === 'done') {
+          clearTypingHapticTimer();
           setIsTyping(false);
           return;
         }
 
         if (event === 'chat.error') {
+          clearTypingHapticTimer();
           setIsTyping(false);
         }
       })
@@ -249,13 +293,37 @@ export function useChat() {
       subscription.unsubscribe();
       ActionCable.disconnectConsumer(consumerUrl);
     };
-  }, [token]);
+  }, [clearTypingHapticTimer, token]);
+
+  useEffect(() => {
+    return () => {
+      clearTypingHapticTimer();
+    };
+  }, [clearTypingHapticTimer]);
 
   const sendMutation = useMutation({
     mutationFn: async (text: string) => {
-      await sendMessage(text);
+      let opts: SendMessageOptions | undefined;
+      if (Platform.OS === 'ios') {
+        try {
+          const linked = await AsyncStorage.getItem(APPLE_HEALTH_STORAGE_KEYS.linked);
+          if (linked === '1') {
+            const snap = await fetchAppleHealthSnapshotCached();
+            const compacted = compactAppleHealthPayload(serializeAppleHealthSnapshot(snap));
+            if (Object.keys(compacted).length > 0) {
+              opts = { health_data: compacted };
+            }
+          }
+        } catch (e) {
+          if (typeof __DEV__ !== 'undefined' && __DEV__) {
+            console.warn('[Chat] HealthKit snapshot skipped:', e);
+          }
+        }
+      }
+      await sendMessage(text, opts);
     },
     onMutate: (text) => {
+      clearTypingHapticTimer();
       const userMsg: AiMessage = {
         id: makeId('user'),
         role: 'user',
@@ -265,8 +333,13 @@ export function useChat() {
       };
       setMessages((prev) => [...prev, userMsg]);
       setIsTyping(true);
+      typingHapticTimerRef.current = setTimeout(() => {
+        hapticTypingStart();
+        typingHapticTimerRef.current = null;
+      }, 500);
     },
     onError: (err) => {
+      clearTypingHapticTimer();
       setIsTyping(false);
       const msg =
         err instanceof Error ? err.message : typeof err === 'string' ? err : 'Errore di rete';
@@ -285,8 +358,14 @@ export function useChat() {
     [sendMutation],
   );
 
-  const confirmChatWeight = useCallback(async (kg: number) => {
-    await confirmWeight(kg);
+  const confirmChatAction = useCallback(async (payload: ConfirmChatPayload) => {
+    try {
+      await confirmChatActionApi(payload);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Errore di rete';
+      Alert.alert('Conferma non riuscita', msg);
+      throw e;
+    }
   }, []);
 
   const reactionMutation = useMutation({
@@ -354,7 +433,7 @@ export function useChat() {
     loadLatestHistory,
     refreshLatestHistory,
     loadOlderHistory,
-    confirmWeight: confirmChatWeight,
+    confirmChatAction,
     reactionUi,
     openReactionPicker,
     closeReactionPicker,

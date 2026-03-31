@@ -40,7 +40,7 @@ describe('MessageRenderer', () => {
       tree = ReactTestRenderer.create(
         <MessageRenderer
           message={message}
-          onConfirmWeight={jest.fn()}
+          onConfirmChatAction={jest.fn()}
           reactionPickerOpen={false}
           onOpenReactionPicker={jest.fn()}
           onCloseReactionPicker={jest.fn()}
@@ -80,7 +80,7 @@ describe('MessageRenderer', () => {
       tree = ReactTestRenderer.create(
         <MessageRenderer
           message={message}
-          onConfirmWeight={jest.fn()}
+          onConfirmChatAction={jest.fn()}
           reactionPickerOpen={false}
           onOpenReactionPicker={jest.fn()}
           onCloseReactionPicker={jest.fn()}
@@ -128,7 +128,7 @@ describe('MessageRenderer', () => {
       tree = ReactTestRenderer.create(
         <MessageRenderer
           message={message}
-          onConfirmWeight={jest.fn()}
+          onConfirmChatAction={jest.fn()}
           reactionPickerOpen={false}
           onOpenReactionPicker={jest.fn()}
           onCloseReactionPicker={jest.fn()}
@@ -166,7 +166,7 @@ describe('MessageRenderer', () => {
       tree = ReactTestRenderer.create(
         <MessageRenderer
           message={message}
-          onConfirmWeight={onConfirm}
+          onConfirmChatAction={onConfirm}
           reactionPickerOpen={false}
           onOpenReactionPicker={jest.fn()}
           onCloseReactionPicker={jest.fn()}
@@ -181,7 +181,9 @@ describe('MessageRenderer', () => {
       buttons[0].props.onPress();
       await Promise.resolve();
     });
-    expect(onConfirm).toHaveBeenCalledWith(101);
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'weight', value: 101, date: '2026-03-19' }),
+    );
   });
 
   it('opens reaction picker on long press for assistant messages', async () => {
@@ -199,7 +201,7 @@ describe('MessageRenderer', () => {
       tree = ReactTestRenderer.create(
         <MessageRenderer
           message={message}
-          onConfirmWeight={jest.fn()}
+          onConfirmChatAction={jest.fn()}
           reactionPickerOpen={false}
           onOpenReactionPicker={onOpenReactionPicker}
           onCloseReactionPicker={jest.fn()}
@@ -233,7 +235,7 @@ describe('MessageRenderer', () => {
       tree = ReactTestRenderer.create(
         <MessageRenderer
           message={message}
-          onConfirmWeight={jest.fn()}
+          onConfirmChatAction={jest.fn()}
           reactionPickerOpen={true}
           onOpenReactionPicker={jest.fn()}
           onCloseReactionPicker={jest.fn()}
@@ -252,6 +254,67 @@ describe('MessageRenderer', () => {
     expect(onSetReaction).toHaveBeenCalledWith('assistant-2', 'like');
   });
 
+  it('shows minimal heart hint for assistant by default', async () => {
+    const message: AiMessage = {
+      id: 'assistant-heart-default',
+      role: 'assistant',
+      text: 'Messaggio reagibile',
+      timestamp: new Date('2026-03-19T12:00:00Z'),
+      cards: [],
+    };
+
+    let tree: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      tree = ReactTestRenderer.create(
+        <MessageRenderer
+          message={message}
+          onConfirmChatAction={jest.fn()}
+          reactionPickerOpen={false}
+          onOpenReactionPicker={jest.fn()}
+          onCloseReactionPicker={jest.fn()}
+          onSetReaction={jest.fn()}
+        />,
+      );
+    });
+
+    const textDump = tree.root
+      .findAllByType(require('react-native').Text)
+      .map((t) => (Array.isArray(t.props.children) ? t.props.children.join('') : String(t.props.children ?? '')))
+      .join(' ');
+    expect(textDump).toContain('♡');
+  });
+
+  it('shows filled heart when assistant message is liked', async () => {
+    const message: AiMessage = {
+      id: 'assistant-heart-liked',
+      role: 'assistant',
+      text: 'Messaggio piaciuto',
+      timestamp: new Date('2026-03-19T12:00:00Z'),
+      cards: [],
+      reaction: 'like',
+    };
+
+    let tree: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      tree = ReactTestRenderer.create(
+        <MessageRenderer
+          message={message}
+          onConfirmChatAction={jest.fn()}
+          reactionPickerOpen={false}
+          onOpenReactionPicker={jest.fn()}
+          onCloseReactionPicker={jest.fn()}
+          onSetReaction={jest.fn()}
+        />,
+      );
+    });
+
+    const textDump = tree.root
+      .findAllByType(require('react-native').Text)
+      .map((t) => (Array.isArray(t.props.children) ? t.props.children.join('') : String(t.props.children ?? '')))
+      .join(' ');
+    expect(textDump).toContain('❤️');
+  });
+
   it('keeps user messages aligned to the right', async () => {
     const message: AiMessage = {
       id: 'user-align-1',
@@ -266,7 +329,7 @@ describe('MessageRenderer', () => {
       tree = ReactTestRenderer.create(
         <MessageRenderer
           message={message}
-          onConfirmWeight={jest.fn()}
+          onConfirmChatAction={jest.fn()}
           reactionPickerOpen={false}
           onOpenReactionPicker={jest.fn()}
           onCloseReactionPicker={jest.fn()}
@@ -300,7 +363,7 @@ describe('MessageRenderer', () => {
       tree = ReactTestRenderer.create(
         <MessageRenderer
           message={message}
-          onConfirmWeight={jest.fn()}
+          onConfirmChatAction={jest.fn()}
           reactionPickerOpen={false}
           onOpenReactionPicker={jest.fn()}
           onCloseReactionPicker={jest.fn()}
@@ -314,7 +377,7 @@ describe('MessageRenderer', () => {
     );
     const hasFixedWidthWrap = viewsWithStyle.some((n) => {
       const style = flattenStyle(n.props.style);
-      return style.width === '78%';
+      return style.maxWidth === '98%';
     });
     expect(hasFixedWidthWrap).toBe(true);
 

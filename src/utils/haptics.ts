@@ -53,3 +53,29 @@ export function hapticWarning() {
 export function hapticError() {
   ReactNativeHapticFeedback.trigger('notificationError', defaultOptions);
 }
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+export function hapticTypingStart() {
+  ReactNativeHapticFeedback.trigger('impactMedium', defaultOptions);
+}
+
+export async function hapticReceiveDoubleGap(gapMs = 180) {
+  ReactNativeHapticFeedback.trigger('impactHeavy', defaultOptions);
+  await delay(gapMs);
+  ReactNativeHapticFeedback.trigger('impactLight', defaultOptions);
+}
+
+/**
+ * Subtle "continuous" feedback for incoming assistant message.
+ * Uses small selection ticks with short gaps.
+ */
+export async function hapticIncomingSoft(gapMs = 80) {
+  ReactNativeHapticFeedback.trigger('impactLight', defaultOptions);
+  await delay(gapMs);
+  ReactNativeHapticFeedback.trigger('impactLight', defaultOptions);
+  await delay(gapMs);
+  ReactNativeHapticFeedback.trigger('impactLight', defaultOptions);
+}

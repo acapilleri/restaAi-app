@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
+import { DrawerMenuButton } from '../components/navigation/DrawerMenuButton';
 import { getPhotos, uploadPhoto, deletePhoto } from '../api/photos';
 import type { PhotosResponse } from '../api/photos';
 
@@ -26,6 +27,84 @@ function formatDate(s: string) {
 }
 
 export function FotoScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.bgPrimary },
+        scroll: { flex: 1 },
+        pad: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
+        topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+        title: { fontSize: 20, fontWeight: '600', color: colors.textPrimary },
+        titleWithMenu: { flex: 1, marginRight: 8 },
+        months: { fontSize: 15, color: colors.primary, fontWeight: '500' },
+        loadingBox: { padding: 24, alignItems: 'center' },
+        errorText: { fontSize: 14, color: colors.amber, marginBottom: 14 },
+        photoGrid: { flexDirection: 'row', gap: 12, marginBottom: 14 },
+        photoCard: { flex: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
+        photoCardActive: { borderWidth: 2, borderColor: colors.primary },
+        photoImg: { height: 120, width: '100%', backgroundColor: colors.bgSecondary },
+        photoMeta: { padding: 10, paddingHorizontal: 12, backgroundColor: colors.bgSecondary },
+        photoMetaActive: { backgroundColor: colors.greenPill },
+        photoDate: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
+        photoKg: { fontSize: 15, color: colors.textPrimary, fontWeight: '500' },
+        photoDateActive: { fontSize: 12, color: colors.primaryDarkLabel },
+        photoKgActive: { fontSize: 15, color: colors.primaryDark, fontWeight: '500' },
+        aiComment: {
+          backgroundColor: colors.greenPill,
+          borderRadius: 14,
+          padding: 14,
+          paddingHorizontal: 16,
+          marginBottom: 14,
+        },
+        aiCommentLbl: { fontSize: 12, color: colors.primaryDarkLabel, fontWeight: '500', marginBottom: 6 },
+        aiCommentTxt: { fontSize: 15, color: colors.primaryDark, lineHeight: 22 },
+        progressCard: {
+          backgroundColor: colors.bgCard,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 14,
+          padding: 14,
+          paddingHorizontal: 16,
+          marginBottom: 14,
+        },
+        progressHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+        progressLbl: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
+        progressPct: { fontSize: 13, color: colors.primary, fontWeight: '500' },
+        miniStats: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+        miniStat: { flex: 1, backgroundColor: colors.bgSecondary, borderRadius: 12, padding: 12, alignItems: 'center' },
+        miniVal: { fontSize: 18, fontWeight: '600', color: colors.textPrimary },
+        miniLbl: { fontSize: 12, color: colors.textSecondary },
+        uploadBtn: {
+          backgroundColor: colors.primary,
+          borderRadius: 14,
+          padding: 16,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          gap: 8,
+          marginBottom: 20,
+        },
+        uploadBtnText: { fontSize: 16, fontWeight: '600', color: colors.textOnPrimary },
+        listSection: { marginTop: 8 },
+        listSectionTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: 10 },
+        listRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 10,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.divider,
+          gap: 12,
+        },
+        listThumb: { width: 56, height: 56, borderRadius: 8 },
+        listMeta: { flex: 1 },
+        listDate: { fontSize: 14, color: colors.textPrimary },
+        listKg: { fontSize: 13, color: colors.textSecondary },
+        listDeleteHint: { fontSize: 11, color: colors.textMuted },
+      }),
+    [colors],
+  );
+
   const [data, setData] = useState<PhotosResponse | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -123,8 +202,9 @@ export function FotoScreen() {
       >
         <View style={styles.pad}>
           <View style={styles.topRow}>
-            <Text style={styles.title}>Progresso foto</Text>
+            <Text style={[styles.title, styles.titleWithMenu]}>Progresso foto</Text>
             <Text style={styles.months}>{photos.length} foto</Text>
+            <DrawerMenuButton placement="trailing" />
           </View>
 
           {loading && !data ? (
@@ -243,75 +323,3 @@ export function FotoScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgPrimary },
-  scroll: { flex: 1 },
-  pad: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  title: { fontSize: 20, fontWeight: '600', color: colors.textPrimary },
-  months: { fontSize: 15, color: colors.primary, fontWeight: '500' },
-  loadingBox: { padding: 24, alignItems: 'center' },
-  errorText: { fontSize: 14, color: colors.amber, marginBottom: 14 },
-  photoGrid: { flexDirection: 'row', gap: 12, marginBottom: 14 },
-  photoCard: { flex: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
-  photoCardActive: { borderWidth: 2, borderColor: colors.primary },
-  photoImg: { height: 120, width: '100%', backgroundColor: '#E8E6DF' },
-  photoMeta: { padding: 10, paddingHorizontal: 12, backgroundColor: '#F1EFE8' },
-  photoMetaActive: { backgroundColor: colors.greenPill },
-  photoDate: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
-  photoKg: { fontSize: 15, color: colors.textPrimary, fontWeight: '500' },
-  photoDateActive: { fontSize: 12, color: colors.primaryDarkLabel },
-  photoKgActive: { fontSize: 15, color: colors.primaryDark, fontWeight: '500' },
-  aiComment: {
-    backgroundColor: colors.greenPill,
-    borderRadius: 14,
-    padding: 14,
-    paddingHorizontal: 16,
-    marginBottom: 14,
-  },
-  aiCommentLbl: { fontSize: 12, color: colors.primaryDarkLabel, fontWeight: '500', marginBottom: 6 },
-  aiCommentTxt: { fontSize: 15, color: colors.primaryDark, lineHeight: 22 },
-  progressCard: {
-    backgroundColor: colors.bgCard,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    padding: 14,
-    paddingHorizontal: 16,
-    marginBottom: 14,
-  },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between' },
-  progressLbl: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
-  progressPct: { fontSize: 13, color: colors.primary, fontWeight: '500' },
-  miniStats: { flexDirection: 'row', gap: 10, marginBottom: 14 },
-  miniStat: { flex: 1, backgroundColor: colors.bgSecondary, borderRadius: 12, padding: 12, alignItems: 'center' },
-  miniVal: { fontSize: 18, fontWeight: '600', color: colors.textPrimary },
-  miniLbl: { fontSize: 12, color: colors.textSecondary },
-  uploadBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  uploadBtnText: { fontSize: 16, fontWeight: '600', color: colors.textOnPrimary },
-  listSection: { marginTop: 8 },
-  listSectionTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: 10 },
-  listRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-    gap: 12,
-  },
-  listThumb: { width: 56, height: 56, borderRadius: 8 },
-  listMeta: { flex: 1 },
-  listDate: { fontSize: 14, color: colors.textPrimary },
-  listKg: { fontSize: 13, color: colors.textSecondary },
-  listDeleteHint: { fontSize: 11, color: colors.textMuted },
-});

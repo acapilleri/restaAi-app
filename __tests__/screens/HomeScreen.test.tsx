@@ -50,7 +50,17 @@ jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
   return {
     ...actual,
-    // run callback after mount (like real useFocusEffect when screen is focused)
+    useNavigation: () => ({
+      dispatch: jest.fn(),
+      navigate: jest.fn(),
+      goBack: jest.fn(),
+      setOptions: jest.fn(),
+      addListener: jest.fn(() => jest.fn()),
+      removeListener: jest.fn(),
+      isFocused: jest.fn(() => true),
+      getParent: jest.fn(),
+      getState: jest.fn(),
+    }),
     useFocusEffect: (cb: () => void | (() => void)) => {
       React.useEffect(() => {
         cb();

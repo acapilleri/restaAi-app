@@ -7,10 +7,39 @@ import ReactTestRenderer from 'react-test-renderer';
 import { ChatScreen } from '../../src/screens/ChatScreen';
 import type { AiMessage } from '../../src/types/chat';
 
+const mockDrawerNav = {
+  dispatch: jest.fn(),
+  navigate: jest.fn(),
+  goBack: jest.fn(),
+  setOptions: jest.fn(),
+  addListener: jest.fn(() => jest.fn()),
+  removeListener: jest.fn(),
+  isFocused: jest.fn(() => true),
+  getParent: jest.fn(),
+  getState: jest.fn(),
+};
+
+jest.mock('@react-navigation/native', () => {
+  const React = require('react');
+  const actual = jest.requireActual('@react-navigation/native');
+  return {
+    ...actual,
+    useRoute: () => ({ key: 'Chat-test', name: 'Chat', params: {} }),
+    useNavigation: () => mockDrawerNav,
+    useFocusEffect: (cb: () => void | (() => void)) => {
+      React.useEffect(() => {
+        const cleanup = cb();
+        return typeof cleanup === 'function' ? cleanup : undefined;
+      }, []);
+    },
+  };
+});
+
 const mockSendMessage = jest.fn();
-const mockConfirmWeight = jest.fn();
+const mockConfirmChatAction = jest.fn();
 const mockRefreshLatestHistory = jest.fn();
 const mockLoadOlderHistory = jest.fn();
+let mockQuickChips: string[] = ['Registra peso', 'Alternative pranzo'];
 
 const mockBaseMessage: AiMessage = {
   id: 'm1',
@@ -23,7 +52,7 @@ const mockBaseMessage: AiMessage = {
 jest.mock('../../src/hooks/useChat', () => ({
   useChat: () => ({
     messages: [mockBaseMessage],
-    quickChips: ['Registra peso', 'Alternative pranzo'],
+    quickChips: mockQuickChips,
     isTyping: false,
     isSending: false,
     isHistoryLoading: false,
@@ -38,12 +67,13 @@ jest.mock('../../src/hooks/useChat', () => ({
     closeReactionPicker: jest.fn(),
     setReaction: jest.fn(),
     sendMessage: (...args: unknown[]) => mockSendMessage(...args),
-    confirmWeight: (...args: unknown[]) => mockConfirmWeight(...args),
+    confirmChatAction: (...args: unknown[]) => mockConfirmChatAction(...args),
   }),
 }));
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockQuickChips = ['Registra peso', 'Alternative pranzo'];
 });
 
 describe('ChatScreen', () => {
@@ -132,6 +162,30 @@ describe('ChatScreen', () => {
       });
     });
     expect(mockLoadOlderHistory).not.toHaveBeenCalled();
+
+    await ReactTestRenderer.act(async () => {
+      tree.unmount();
+    });
+  });
+
+  it('does not render quick chips when quickChips is empty', async () => {
+    mockQuickChips = [];
+
+    let tree: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      tree = ReactTestRenderer.create(<ChatScreen />);
+    });
+
+    const texts = tree.root.findAllByType(require('react-native').Text);
+    const content = texts
+      .map((t) => {
+        const c = t.props.children;
+        return Array.isArray(c) ? c.join('') : String(c ?? '');
+      })
+      .join(' ');
+
+    expect(content).not.toContain('Registra peso');
+    expect(content).not.toContain('Alternative pranzo');
 
     await ReactTestRenderer.act(async () => {
       tree.unmount();

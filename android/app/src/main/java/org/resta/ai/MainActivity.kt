@@ -1,4 +1,4 @@
-package com.dietadherenceapp
+package org.resta.ai
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

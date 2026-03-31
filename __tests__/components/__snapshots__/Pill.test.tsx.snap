@@ -10,7 +10,7 @@ exports[`Pill applies active style when active=true 1`] = `
         "paddingVertical": 6,
       },
       {
-        "backgroundColor": "#d1fae5",
+        "backgroundColor": "#E1F5EE",
       },
     ]
   }
@@ -23,7 +23,7 @@ exports[`Pill applies active style when active=true 1`] = `
           "fontWeight": "500",
         },
         {
-          "color": "#047857",
+          "color": "#0F6E56",
         },
       ]
     }
@@ -43,7 +43,7 @@ exports[`Pill applies inactive when active=false 1`] = `
         "paddingVertical": 6,
       },
       {
-        "backgroundColor": "#f4f4f5",
+        "backgroundColor": "#F1EFE8",
       },
     ]
   }
@@ -56,7 +56,7 @@ exports[`Pill applies inactive when active=false 1`] = `
           "fontWeight": "500",
         },
         {
-          "color": "#52525b",
+          "color": "#888",
         },
       ]
     }
@@ -76,7 +76,7 @@ exports[`Pill defaults to inactive style 1`] = `
         "paddingVertical": 6,
       },
       {
-        "backgroundColor": "#f4f4f5",
+        "backgroundColor": "#F1EFE8",
       },
     ]
   }
@@ -89,7 +89,7 @@ exports[`Pill defaults to inactive style 1`] = `
           "fontWeight": "500",
         },
         {
-          "color": "#52525b",
+          "color": "#888",
         },
       ]
     }

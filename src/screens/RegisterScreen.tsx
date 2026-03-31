@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,16 +13,46 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 type Props = { onSwitchLogin: () => void };
 
 export function RegisterScreen({ onSwitchLogin }: Props) {
   const { register, isLoading } = useAuth();
+  const { colors } = useTheme();
   const [first_name, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [password_confirmation, setPasswordConfirmation] = useState('');
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.bgPrimary },
+        keyboard: { flex: 1 },
+        scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 24 },
+        card: { backgroundColor: colors.bgCard, borderRadius: 16, padding: 24, borderWidth: 1, borderColor: colors.border },
+        title: { fontSize: 24, fontWeight: '700', color: colors.textPrimary, textAlign: 'center', marginBottom: 4 },
+        subtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginBottom: 20 },
+        input: {
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 12,
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          fontSize: 16,
+          color: colors.textPrimary,
+          marginBottom: 12,
+        },
+        btn: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
+        btnPrimary: { backgroundColor: colors.primary },
+        btnDisabled: { opacity: 0.7 },
+        btnPrimaryText: { fontSize: 16, fontWeight: '600', color: colors.textOnPrimary },
+        switchBtn: { marginTop: 16, alignItems: 'center' },
+        switchText: { fontSize: 14, color: colors.primary, fontWeight: '500' },
+      }),
+    [colors],
+  );
 
   const handleSubmit = async () => {
     const name = first_name.trim();
@@ -57,7 +87,7 @@ export function RegisterScreen({ onSwitchLogin }: Props) {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.card}>
             <Text style={styles.title}>Registrati</Text>
-            <Text style={styles.subtitle}>Crea il tuo account DietaAI</Text>
+            <Text style={styles.subtitle}>Crea il tuo account RestaAI</Text>
             <TextInput
               style={styles.input}
               placeholder="Nome"
@@ -115,28 +145,3 @@ export function RegisterScreen({ onSwitchLogin }: Props) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgPrimary },
-  keyboard: { flex: 1 },
-  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 24 },
-  card: { backgroundColor: colors.bgCard, borderRadius: 16, padding: 24, borderWidth: 1, borderColor: colors.border },
-  title: { fontSize: 24, fontWeight: '700', color: colors.textPrimary, textAlign: 'center', marginBottom: 4 },
-  subtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginBottom: 20 },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: colors.textPrimary,
-    marginBottom: 12,
-  },
-  btn: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
-  btnPrimary: { backgroundColor: colors.primary },
-  btnDisabled: { opacity: 0.7 },
-  btnPrimaryText: { fontSize: 16, fontWeight: '600', color: colors.textOnPrimary },
-  switchBtn: { marginTop: 16, alignItems: 'center' },
-  switchText: { fontSize: 14, color: colors.primary, fontWeight: '500' },
-});

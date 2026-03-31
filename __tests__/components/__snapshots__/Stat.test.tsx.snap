@@ -16,7 +16,7 @@ exports[`Stat matches snapshot 1`] = `
           "height": 1,
           "width": 0,
         },
-        "shadowOpacity": 0.05,
+        "shadowOpacity": 0.08,
         "shadowRadius": 2,
       },
       {

@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 /**
  * DietaAI API — base URL e flag di ambiente.
@@ -8,13 +8,15 @@ import { Platform } from 'react-native';
  * - iOS simulator → http://localhost:3000
  * - Android emulator → http://10.0.2.2:3000
  * Su dispositivo fisico imposta DEV_API_HOST_OVERRIDE all'IP LAN del Mac (es. http://192.168.1.10:3000).
+ * Default dev: Heroku (REMOTE_API_HOST). Imposta `null` per usare locale.
  */
 
-const DEVELOPMENT = typeof __DEV__ !== 'undefined' && __DEV__;
-
-/** Es. 'http://192.168.1.10:3000' per iPhone/Android fisico; null = host automatico */
-const DEV_API_HOST_OVERRIDE: string | null = 'http://192.168.1.57:3000';
-
+const DEVELOPMENT = __DEV__ === true;
+/** Backend produzione (Heroku); stesso valore usato in release. */
+const REMOTE_API_HOST = 'https://resta-ai-6bf7dd4ee671.herokuapp.com';
+const DEV_API_HOST = 'http://localhost:3000';
+/** Override host dev; `REMOTE_API_HOST` = Heroku in dev. `null` = localhost/10.0.2.2 */
+const DEV_API_HOST_OVERRIDE: string | null = REMOTE_API_HOST;
 function defaultDevBaseUrl(): string {
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:3000';
@@ -22,11 +24,7 @@ function defaultDevBaseUrl(): string {
   return 'http://localhost:3000';
 }
 
-const DEV_API_HOST = DEVELOPMENT
-  ? (DEV_API_HOST_OVERRIDE?.trim() || defaultDevBaseUrl())
-  : '';
-
-export const BASE_URL = DEVELOPMENT ? DEV_API_HOST : 'https://api.dietaai.app';
+export const BASE_URL = DEVELOPMENT ? DEV_API_HOST : REMOTE_API_HOST;
 
 export const API_BASE = `${BASE_URL}/api/v1`;
 

@@ -83,19 +83,44 @@ function normalizeDashboardResponse(data: unknown): DashboardResponse {
     payload.weight ??
     payload.latest_weight ??
     (payload as Record<string, unknown>).latestWeight;
-  const rawGoal = payload.target_weight ?? payload.goal_weight_kg ?? (payload as Record<string, unknown>).goalWeightKg;
-  const user: DashboardUser =
-    payload.user && typeof payload.user === 'object'
-      ? (payload.user as DashboardUser)
-      : {
-          name: (payload.name as string) ?? (d.name as string) ?? undefined,
-          current_weight: toNum(rawWeight),
-          weight: toNum(rawWeight),
-          target_weight: toNum(rawGoal),
-          goal_weight_kg: toNum(rawGoal),
-          weight_lost: toNum(payload.weight_lost ?? (payload as Record<string, unknown>).weightLost),
-          progress: toNum(payload.progress ?? payload.progress_percent ?? (payload as Record<string, unknown>).progressPercent),
-        };
+  const pl = payload as Record<string, unknown>;
+  const rawGoal =
+    payload.target_weight ??
+    payload.goal_weight_kg ??
+    pl.goalWeightKg ??
+    pl.goal_weight ??
+    pl.targetWeight;
+  const rootWeight = toNum(rawWeight);
+  const rootGoal = toNum(rawGoal);
+
+  let user: DashboardUser;
+  if (payload.user && typeof payload.user === 'object') {
+    /** Se c'è `user` annidato, il backend spesso mette peso/obiettivo solo sulla radice: uniamo. */
+    const u = payload.user as Record<string, unknown>;
+    const nestedW = toNum(u.current_weight ?? u.weight ?? u.latest_weight);
+    const nestedG = toNum(u.target_weight ?? u.goal_weight_kg ?? u.goal_weight ?? u.goalWeightKg ?? u.targetWeight);
+    user = {
+      ...(u as DashboardUser),
+      current_weight: nestedW ?? rootWeight,
+      weight: toNum(u.weight ?? u.current_weight ?? u.latest_weight) ?? nestedW ?? rootWeight,
+      target_weight: nestedG ?? rootGoal,
+      goal_weight_kg: nestedG ?? rootGoal,
+      weight_lost: toNum(u.weight_lost ?? u.weightLost) ?? toNum(payload.weight_lost ?? pl.weightLost),
+      progress:
+        toNum(u.progress ?? u.progress_percent ?? u.progressPercent) ??
+        toNum(payload.progress ?? payload.progress_percent ?? pl.progressPercent),
+    };
+  } else {
+    user = {
+      name: (payload.name as string) ?? (d.name as string) ?? undefined,
+      current_weight: rootWeight,
+      weight: rootWeight,
+      target_weight: rootGoal,
+      goal_weight_kg: rootGoal,
+      weight_lost: toNum(payload.weight_lost ?? pl.weightLost),
+      progress: toNum(payload.progress ?? payload.progress_percent ?? pl.progressPercent),
+    };
+  }
   const planSummaryRaw = payload.plan_summary ?? (payload.today as Record<string, unknown>)?.plan_summary ?? d.plan_summary ?? (d.today as Record<string, unknown>)?.plan_summary;
   const planSummary: PlanSummary =
     planSummaryRaw && typeof planSummaryRaw === 'object' && 'calories' in planSummaryRaw && 'day' in planSummaryRaw

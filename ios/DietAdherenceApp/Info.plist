@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>DietAdherenceApp</string>
+	<string>Resta</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
+	<string>Resta</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -33,12 +33,16 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Resta legge da Apple Salute dati come peso, composizione corporea, BMI, attività (passi, distanza, piani), energia (attiva, basale, calorie introdotte), frequenza cardiaca (anche a riposo e variabilità), ossigenazione e sonno per contestualizzare il coaching nutrizionale e mostrarti l’andamento nella scheda Salute.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>RestaAI può aggiornare Apple Salute quando registri una pesata dall’app.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
-	<key>NSHealthShareUsageDescription</key>
-	<string>DietaAI legge peso, passi e calorie attive da Apple Salute per mostrarti l’andamento nella scheda Salute.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>DietaAI può aggiornare Apple Salute quando registri una pesata dall’app.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>RestaAI accede alla libreria foto per permetterti di selezionare immagini da caricare nell'app.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>RestaAI può salvare immagini generate o elaborate dall'app nella tua libreria foto.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>
