@@ -9,7 +9,8 @@ export type CardType =
   | 'birth_date_confirm'
   | 'intolerances_confirm'
   | 'pending_action_confirm'
-  | 'recipe_alternative';
+  | 'recipe_alternative'
+  | 'nearby_restaurant_recommendation';
 
 export type MessageReaction = 'like' | 'dislike';
 
@@ -151,6 +152,30 @@ export interface RecipeAlternativeData {
   grassi: number;
   kcal: number;
 }
+export interface NearbyMenuPick {
+  restaurant_name: string;
+  menu_item_name: string;
+  distance_m?: number | null;
+  section?: string | null;
+  notes?: string;
+  diet_fit_summary?: string;
+  cautions?: string[];
+  confidence?: number;
+}
+
+export interface NearbyMenuAlternative {
+  restaurant_name: string;
+  menu_item_name: string;
+  distance_m?: number | null;
+  notes?: string;
+}
+
+export interface NearbyRestaurantRecommendationData {
+  primary_recommendations: NearbyMenuPick[];
+  alternatives?: NearbyMenuAlternative[];
+  assistant_summary_hint?: string;
+}
+
 
 export type CardData =
   | { type: 'macro_summary'; data: MacroSummaryData }
@@ -163,7 +188,8 @@ export type CardData =
   | { type: 'birth_date_confirm'; data: BirthDateConfirmData }
   | { type: 'intolerances_confirm'; data: IntolerancesConfirmData }
   | { type: 'pending_action_confirm'; data: PendingActionConfirmData }
-  | { type: 'recipe_alternative'; data: RecipeAlternativeData };
+  | { type: 'recipe_alternative'; data: RecipeAlternativeData }
+  | { type: 'nearby_restaurant_recommendation'; data: NearbyRestaurantRecommendationData };
 
 export interface AiMessage {
   id: string;
@@ -171,6 +197,8 @@ export interface AiMessage {
   text: string;
   cards: CardData[];
   timestamp: Date;
+  /** Correlazione turno/stream dal backend (WebSocket `request_id`). */
+  requestId?: string;
   reaction?: MessageReaction | null;
   reactionPending?: boolean;
 }
@@ -178,5 +206,15 @@ export interface AiMessage {
 export interface ChatApiResponse {
   text: string;
   cards: CardData[];
-  quick_chips?: string[];
+  quick_chips?: Array<
+    | string
+    | {
+        label?: string;
+        action?: {
+          type?: 'navigate' | 'message';
+          route?: 'Chat' | 'Dieta' | 'Today' | 'Foto' | 'Profilo' | 'Salute';
+          text?: string;
+        };
+      }
+  >;
 }

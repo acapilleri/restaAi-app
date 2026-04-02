@@ -5,6 +5,7 @@
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
 import { ChatScreen } from '../../src/screens/ChatScreen';
+import type { QuickChip } from '../../src/api/chat';
 import type { AiMessage } from '../../src/types/chat';
 
 const mockDrawerNav = {
@@ -39,7 +40,10 @@ const mockSendMessage = jest.fn();
 const mockConfirmChatAction = jest.fn();
 const mockRefreshLatestHistory = jest.fn();
 const mockLoadOlderHistory = jest.fn();
-let mockQuickChips: string[] = ['Registra peso', 'Alternative pranzo'];
+let mockQuickChips: QuickChip[] = [
+  { label: 'Registra peso', action: { type: 'message', text: 'Registra peso' } },
+  { label: 'Alternative pranzo', action: { type: 'message', text: 'Alternative pranzo' } },
+];
 
 const mockBaseMessage: AiMessage = {
   id: 'm1',
@@ -48,6 +52,13 @@ const mockBaseMessage: AiMessage = {
   cards: [],
   timestamp: new Date('2026-03-19T12:00:00Z'),
 };
+
+jest.mock('../../src/hooks/useProfileQuery', () => ({
+  useProfileQuery: () => ({
+    data: { profile: { unread_nudge_count: 0 } },
+    refetch: jest.fn(() => Promise.resolve({})),
+  }),
+}));
 
 jest.mock('../../src/hooks/useChat', () => ({
   useChat: () => ({
@@ -73,7 +84,10 @@ jest.mock('../../src/hooks/useChat', () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockQuickChips = ['Registra peso', 'Alternative pranzo'];
+  mockQuickChips = [
+    { label: 'Registra peso', action: { type: 'message', text: 'Registra peso' } },
+    { label: 'Alternative pranzo', action: { type: 'message', text: 'Alternative pranzo' } },
+  ];
 });
 
 describe('ChatScreen', () => {
@@ -187,6 +201,29 @@ describe('ChatScreen', () => {
     expect(content).not.toContain('Registra peso');
     expect(content).not.toContain('Alternative pranzo');
 
+    await ReactTestRenderer.act(async () => {
+      tree.unmount();
+    });
+  });
+
+  it("navigates to Dieta when 'Aggiungi dieta' quick chip is tapped", async () => {
+    mockQuickChips = [
+      { label: 'Aggiungi dieta', action: { type: 'navigate', route: 'Dieta' } },
+    ];
+    let tree: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      tree = ReactTestRenderer.create(<ChatScreen />);
+    });
+    const touchables = tree.root.findAllByType(require('react-native').TouchableOpacity);
+    const dietChipButton = touchables.find((node) => {
+      const textNodes = node.findAllByType(require('react-native').Text);
+      return textNodes.some((t) => t.props.children === 'Aggiungi dieta');
+    });
+    expect(dietChipButton).toBeDefined();
+    await ReactTestRenderer.act(async () => {
+      dietChipButton?.props.onPress();
+    });
+    expect(mockDrawerNav.navigate).toHaveBeenCalledWith('Dieta');
     await ReactTestRenderer.act(async () => {
       tree.unmount();
     });

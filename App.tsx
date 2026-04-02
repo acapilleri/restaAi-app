@@ -3,20 +3,43 @@
  * @format
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { PROFILE_QUERY_KEY } from './src/api/profile';
 import { AuthProvider } from './src/context/AuthContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { subscribeForegroundMessages, subscribeTokenRefresh } from './src/services/pushMessaging';
 
 const queryClient = new QueryClient();
 
 function AppWithNavigationTheme() {
+  const queryClient = useQueryClient();
   const { colors, resolvedScheme } = useTheme();
+  const linking = useMemo(
+    () => ({
+      // `restaai://dieta` has "dieta" as host, so we support both host-based and path-based prefixes.
+      prefixes: ['restaai://dieta', 'restaai://'],
+      config: {
+        screens: {
+          Main: {
+            screens: {
+              Dieta: {
+                screens: {
+                  DietaMain: '',
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+    [],
+  );
   const navTheme = useMemo(
     () => ({
       ...(resolvedScheme === 'dark' ? DarkTheme : DefaultTheme),
@@ -33,19 +56,45 @@ function AppWithNavigationTheme() {
     [resolvedScheme, colors],
   );
 
+  useEffect(() => {
+    const unsubMsg = subscribeForegroundMessages((remoteMessage) => {
+      const data = remoteMessage?.data;
+      if (
+        data &&
+        (data.type === 'nudge' || data.category === 'nudge' || data.nudge === '1')
+      ) {
+        try {
+          void queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
+        } catch {
+          /* evita crash se la cache non è pronta */
+        }
+      }
+      if (__DEV__) {
+        console.log('[FCM] Foreground message', remoteMessage?.messageId);
+      }
+    });
+    const unsubToken = subscribeTokenRefresh((token) => {
+      if (__DEV__) {
+        console.log('[FCM] Token refresh', token?.slice(0, 16));
+      }
+    });
+    return () => {
+      unsubMsg();
+      unsubToken();
+    };
+  }, [queryClient]);
+
   return (
     <>
       <StatusBar
         barStyle={resolvedScheme === 'dark' ? 'light-content' : 'dark-content'}
         backgroundColor={colors.bgPrimary}
       />
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <NavigationContainer theme={navTheme}>
-            <RootNavigator />
-          </NavigationContainer>
-        </AuthProvider>
-      </QueryClientProvider>
+      <AuthProvider>
+        <NavigationContainer theme={navTheme} linking={linking}>
+          <RootNavigator />
+        </NavigationContainer>
+      </AuthProvider>
     </>
   );
 }
@@ -55,7 +104,9 @@ function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <AppWithNavigationTheme />
+          <QueryClientProvider client={queryClient}>
+            <AppWithNavigationTheme />
+          </QueryClientProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

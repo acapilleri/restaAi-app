@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import {
   AuthorizationRequestStatus,
@@ -10,6 +11,8 @@ import {
   queryStatisticsForQuantity,
   requestAuthorization,
 } from '@kingstinct/react-native-healthkit';
+
+import { syncHealthSnapshot, type HealthSnapshotPayload } from '../api/healthSnapshots';
 import type {
   ObjectTypeIdentifier,
   QuantityTypeIdentifier,
@@ -72,6 +75,11 @@ export const APPLE_HEALTH_STORAGE_KEYS = {
   readAuthPrompted: 'apple_health_read_auth_prompted_v2',
 } as const;
 
+/** Timestamp ultimo invio riepilogo giornaliero riuscito (`syncDailySummaryToBackend`). */
+export const HEALTH_SYNC_TIMESTAMPS_KEYS = {
+  lastDailySyncAt: 'health_last_daily_sync_at',
+} as const;
+
 const SNAPSHOT_QUANTITY_IDS = [
   STEP_COUNT,
   ACTIVE_ENERGY,
@@ -131,7 +139,11 @@ export type AppleHealthSnapshotPayload = {
 /** Payload inviato in chat: solo chiavi con valore definito (no null/undefined/NaN). */
 export type AppleHealthSnapshotPayloadWire = Partial<{
   [K in keyof AppleHealthSnapshotPayload]: Exclude<AppleHealthSnapshotPayload[K], null | undefined>;
-}>;
+}> & {
+  /** Timestamp lettura HealthKit per freshness lato client. */
+  recorded_at?: string;
+  snapshot_at?: string;
+};
 
 export function serializeAppleHealthSnapshot(snapshot: AppleHealthSnapshot): AppleHealthSnapshotPayload {
   return {
@@ -1026,5 +1038,60 @@ export async function fetchSaluteMetricHistory(metric: SaluteMetricId): Promise<
       return fetchDailySleepAsleepHoursStorico(dailyDays);
     default:
       return [];
+  }
+}
+
+/** Invia il riepilogo giornaliero al backend (fire-and-forget dall’auth). */
+export async function syncDailySummaryToBackend(): Promise<void> {
+  if (Platform.OS !== 'ios') return;
+  if (!(await isAppleHealthSupported())) return;
+  try {
+    const linked = await AsyncStorage.getItem(APPLE_HEALTH_STORAGE_KEYS.linked);
+    if (linked !== '1') return;
+  } catch {
+    return;
+  }
+
+  const now = new Date();
+  const todayStr = dateLocalYmd(now);
+  const snap = await fetchAppleHealthSnapshot();
+
+  const payload: HealthSnapshotPayload = {
+    snapshot_date: todayStr,
+    snapshot_type: 'daily_summary',
+    recorded_at: now.toISOString(),
+    raw_data: serializeAppleHealthSnapshot(snap) as Record<string, unknown>,
+  };
+  if (snap.activeEnergyKcalToday != null) payload.active_calories = snap.activeEnergyKcalToday;
+  if (snap.stepsToday != null) payload.steps = snap.stepsToday;
+  if (snap.sleepAsleepHoursRecent != null) payload.sleep_hours = snap.sleepAsleepHoursRecent;
+  if (snap.restingHeartRateBpm != null) payload.resting_hr = Math.round(snap.restingHeartRateBpm);
+  if (snap.lastWeightKg != null) payload.weight_kg = snap.lastWeightKg;
+  if (snap.bodyFatPercent != null) payload.body_fat_percent = snap.bodyFatPercent;
+  if (snap.heartRateBpm != null) payload.heart_rate_bpm = Math.round(snap.heartRateBpm);
+  if (snap.hrvSdnnMs != null) payload.hrv_sdnn_ms = snap.hrvSdnnMs;
+  if (snap.basalEnergyKcalToday != null) payload.basal_energy_kcal_today = snap.basalEnergyKcalToday;
+  if (snap.distanceWalkingRunningKmToday != null) {
+    payload.distance_walking_running_km_today = snap.distanceWalkingRunningKmToday;
+  }
+  if (snap.oxygenSaturationPercent != null) {
+    payload.oxygen_saturation_percent = snap.oxygenSaturationPercent;
+  }
+  if (snap.dietaryEnergyKcalToday != null) payload.dietary_energy_kcal_today = snap.dietaryEnergyKcalToday;
+  if (snap.flightsClimbedToday != null) payload.flights_climbed_today = snap.flightsClimbedToday;
+  if (snap.leanBodyMassKg != null) payload.lean_body_mass_kg = snap.leanBodyMassKg;
+  if (snap.bmi != null) payload.bmi = snap.bmi;
+  if (snap.lastWeightDate != null) payload.last_weight_date = snap.lastWeightDate.toISOString();
+
+  const clean = Object.fromEntries(
+    Object.entries(payload).filter(([, v]) => v !== undefined),
+  ) as HealthSnapshotPayload;
+  const ok = await syncHealthSnapshot(clean);
+  if (ok) {
+    try {
+      await AsyncStorage.setItem(HEALTH_SYNC_TIMESTAMPS_KEYS.lastDailySyncAt, now.toISOString());
+    } catch {
+      // ignore
+    }
   }
 }

@@ -12,12 +12,17 @@ type Props = {
 /** markdown-it senza HTML grezzo (sicurezza). Istanza stabile per evitare re-parse inutili. */
 function useSafeMarkdownIt() {
   return useMemo(
-    () =>
-      new MarkdownIt({
+    () => {
+      const md = new MarkdownIt({
         html: false,
         linkify: true,
         typographer: true,
-      }),
+      });
+      // Allow custom app deep links to be recognized in plain text.
+      md.linkify.add('restaai:', 'http:');
+      md.linkify.add('resta:', 'http:');
+      return md;
+    },
     [],
   );
 }
@@ -187,13 +192,35 @@ export function ChatMarkdown({ text, isUser }: Props) {
     } as Parameters<typeof StyleSheet.create>[0]);
   }, [colors, isUser]);
 
-  const handleLinkPress = useCallback((url: string) => {
-    if (!url || !/^https?:\/\//i.test(url)) return false;
-    void Linking.canOpenURL(url).then((supported) => {
-      if (supported) void Linking.openURL(url);
-    });
-    return true;
+  const normalizeDeepLink = useCallback((input: string) => {
+    // `softWrapText()` inserts ZWSP for layout; markdown may pass them URL-encoded.
+    const cleaned = input
+      .replace(/%E2%80%8B/gi, '')
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .trim();
+  
+    const compact = cleaned.replace(/\s+/g, '');
+    if (/^restaai:\/*dieta\/?$/i.test(compact) || /^resta:\/*dieta\/?$/i.test(compact)) {
+      return 'restaai://dieta';
+    }
+
+  
+    if (/^restaai:dieta\/?$/i.test(compact) || /^resta:dieta\/?$/i.test(compact)) {
+      return 'restaai://dieta';
+    }
   }, []);
+
+  const handleLinkPress = useCallback((url: string) => {
+    const raw = typeof url === 'string' ? url.trim() : '';
+    if (!raw) return false;
+    const normalizedUrl = normalizeDeepLink(raw);
+    Linking.openURL('restaai://dieta')
+    void Linking.openURL('restaai://dieta').catch(() => {
+      // no-op: keep markdown interaction stable even for malformed links
+    });
+    // `react-native-markdown-display`: return false when link opening is handled manually.
+    return false;
+  }, [normalizeDeepLink]);
 
   return (
     <MarkdownErrorBoundary text={content} isUser={isUser}>

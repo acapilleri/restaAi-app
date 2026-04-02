@@ -88,6 +88,60 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   clear: jest.fn(() => Promise.resolve()),
 }));
 
+jest.mock('@react-native-firebase/app', () => ({
+  __esModule: true,
+  default: () => ({}),
+}));
+
+jest.mock('@react-native-firebase/messaging', () => {
+  const messagingInstance = {
+    requestPermission: jest.fn(() => Promise.resolve(1)),
+    getToken: jest.fn(() => Promise.resolve('mock-fcm-token')),
+    onMessage: jest.fn(() => jest.fn()),
+    onTokenRefresh: jest.fn(() => jest.fn()),
+    setBackgroundMessageHandler: jest.fn(),
+  };
+  const factory = jest.fn(() => messagingInstance);
+  return { __esModule: true, default: factory };
+});
+
+jest.mock('react-native-geolocation-service', () => ({
+  __esModule: true,
+  default: {
+    getCurrentPosition: jest.fn((success) =>
+      success({ coords: { latitude: 45.4, longitude: 9.2 }, timestamp: Date.now() }),
+    ),
+  },
+}));
+
+jest.mock('react-native-permissions', () => {
+  const RESULTS = {
+    UNAVAILABLE: 'unavailable',
+    BLOCKED: 'blocked',
+    DENIED: 'denied',
+    GRANTED: 'granted',
+    LIMITED: 'limited',
+  };
+  return {
+    PERMISSIONS: {
+      IOS: {
+        LOCATION_WHEN_IN_USE: 'ios.LOCATION_WHEN_IN_USE',
+        NOTIFICATIONS: 'ios.NOTIFICATIONS',
+      },
+      ANDROID: {
+        ACCESS_FINE_LOCATION: 'android.ACCESS_FINE_LOCATION',
+        POST_NOTIFICATIONS: 'android.POST_NOTIFICATIONS',
+      },
+    },
+    RESULTS,
+    check: jest.fn(() => Promise.resolve(RESULTS.GRANTED)),
+    request: jest.fn(() => Promise.resolve(RESULTS.GRANTED)),
+    checkNotifications: jest.fn(() => Promise.resolve({ status: RESULTS.GRANTED, settings: {} })),
+    requestNotifications: jest.fn(() => Promise.resolve({ status: RESULTS.GRANTED, settings: {} })),
+    openSettings: jest.fn(() => Promise.resolve()),
+  };
+});
+
 // Theme: avoid requiring ThemeProvider in every test; default to light palette.
 jest.mock('./src/context/ThemeContext', () => {
   const React = require('react');

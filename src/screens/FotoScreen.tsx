@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
-import { DrawerMenuButton } from '../components/navigation/DrawerMenuButton';
+import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
 import { getPhotos, uploadPhoto, deletePhoto } from '../api/photos';
 import type { PhotosResponse } from '../api/photos';
 

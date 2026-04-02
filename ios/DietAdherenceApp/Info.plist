@@ -18,6 +18,15 @@
 	<string>Resta</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>restaai</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
@@ -38,13 +47,17 @@
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>RestaAI può aggiornare Apple Salute quando registri una pesata dall’app.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>Resta può usare la posizione quando in uso per funzioni che dipendono dal luogo (es. suggerimenti contestuali). Puoi negare l’accesso in qualsiasi momento.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>RestaAI accede alla libreria foto per permetterti di selezionare immagini da caricare nell'app.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>RestaAI può salvare immagini generate o elaborate dall'app nella tua libreria foto.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Ionicons.ttf</string>

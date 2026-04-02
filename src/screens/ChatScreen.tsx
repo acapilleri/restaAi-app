@@ -16,11 +16,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { MessageRenderer } from '../components/chat/MessageRenderer';
 import { TypingIndicator } from '../components/chat/TypingIndicator';
 import { QuickChips } from '../components/chat/QuickChips';
-import { DrawerMenuButton } from '../components/navigation/DrawerMenuButton';
+import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
 import { useChat } from '../hooks/useChat';
 import { hapticLight } from '../utils/haptics';
 import type { MainParamList } from '../navigation/types';
@@ -30,6 +31,7 @@ import { APPLE_HEALTH_STORAGE_KEYS, fetchAppleHealthSnapshotCached } from '../se
 
 export function ChatScreen() {
   const { colors } = useTheme();
+  const navigation = useNavigation<DrawerNavigationProp<MainParamList>>();
   const route = useRoute<RouteProp<MainParamList, 'Chat'>>();
   const {
     messages,
@@ -347,8 +349,18 @@ export function ChatScreen() {
           <View style={styles.inputArea}>
             {quickChips.length > 0 ? (
               <QuickChips
-                chips={quickChips}
+                chips={quickChips.map((chip) => chip.label)}
                 onPress={(chip) => {
+                  const selected = quickChips.find((entry) => entry.label === chip);
+                  if (selected?.action?.type === 'navigate') {
+                    navigation.navigate(selected.action.route);
+                    return;
+                  }
+                  if (selected?.action?.type === 'message') {
+                    sendMessage(selected.action.text);
+                    scrollToLatest(true);
+                    return;
+                  }
                   sendMessage(chip);
                   scrollToLatest(true);
                 }}

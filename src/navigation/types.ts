@@ -11,8 +11,6 @@ export type ChatPromptSource =
 export type ProfiloStackParamList = {
   ProfiloMain: undefined;
   Configura: undefined;
-  /** Stack interno: piano + future sotto-schermate con back coerente */
-  Dieta: undefined;
 };
 
 /** Apple Salute: voce principale del drawer (stack con storico metriche). */
@@ -37,6 +35,7 @@ export type MainParamList = {
       }
     | undefined;
   ChatDemos: undefined;
+  Dieta: undefined;
   Today: undefined;
   Foto: undefined;
   Profilo: undefined;

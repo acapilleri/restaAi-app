@@ -14,7 +14,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
-import { DrawerMenuButton } from '../components/navigation/DrawerMenuButton';
+import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
 import type { SaluteStackParamList } from '../navigation/types';
 import {
   fetchSaluteMetricHistory,

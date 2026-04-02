@@ -1,8 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '../api/auth';
 import * as authApi from '../api/auth';
 import { getStoredToken, removeStoredToken } from '../api/authStorage';
 import { setOnUnauthorized } from '../api/client';
+import { PROFILE_QUERY_KEY } from '../api/profile';
+import { syncDailySummaryToBackend } from '../services/appleHealth';
 
 type AuthState = {
   user: User | null;
@@ -22,6 +26,7 @@ type AuthContextValue = AuthState & {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [state, setState] = useState<AuthState>({
     user: null,
     token: null,
@@ -31,8 +36,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const clearSession = useCallback(async () => {
     await removeStoredToken();
+    queryClient.removeQueries({ queryKey: PROFILE_QUERY_KEY });
     setState((s) => ({ ...s, user: null, token: null }));
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     setOnUnauthorized(() => {
@@ -40,6 +46,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     return () => setOnUnauthorized(null);
   }, [clearSession]);
+
+  useEffect(() => {
+    if (!state.token || !state.user) return;
+    void syncDailySummaryToBackend();
+  }, [state.token, state.user?.id]);
+
+  const appStateRef = useRef(AppState.currentState);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (appStateRef.current.match(/inactive|background/) && next === 'active' && state.token && state.user) {
+        void syncDailySummaryToBackend();
+      }
+      appStateRef.current = next;
+    });
+    return () => sub.remove();
+  }, [state.token, state.user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { getProfile } = await import('../api/profile');
         const res = await getProfile();
+        if (!cancelled && res?.profile) {
+          queryClient.setQueryData(PROFILE_QUERY_KEY, res);
+        }
         const profile = res?.profile;
         if (!cancelled && profile) {
           const firstName =
@@ -73,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [queryClient]);
 
   const login = useCallback(async (email: string, password: string) => {
     setState((s) => ({ ...s, isLoading: true }));
@@ -110,8 +135,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     setState((s) => ({ ...s, isLoading: true }));
     await authApi.logout();
+    queryClient.removeQueries({ queryKey: PROFILE_QUERY_KEY });
     setState((s) => ({ ...s, user: null, token: null, isLoading: false }));
-  }, []);
+  }, [queryClient]);
 
   const refreshUser = useCallback(async () => {
     const token = await getStoredToken();
@@ -119,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { getProfile } = await import('../api/profile');
       const res = await getProfile();
+      queryClient.setQueryData(PROFILE_QUERY_KEY, res);
       const profile = res?.profile;
       if (profile) {
         const firstName =
@@ -137,7 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore
     }
-  }, []);
+  }, [queryClient]);
 
   const value: AuthContextValue = {
     ...state,

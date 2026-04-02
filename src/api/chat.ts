@@ -1,14 +1,36 @@
 import client from './client';
-import type { AppleHealthSnapshotPayloadWire } from '../services/appleHealth';
+import type { AppleHealthSnapshotPayload, AppleHealthSnapshotPayloadWire } from '../services/appleHealth';
+
+/** Opzionale: inviato con POST /chat quando serve Just Eat / ristoranti vicini. */
+export type LocationContext = {
+  latitude: number;
+  longitude: number;
+  accuracy_m?: number;
+  captured_at?: string;
+};
+
+/** Compatto per il modello + `raw_data` completo (stesso schema degli snapshot server). */
+export type ChatHealthDataPayload = AppleHealthSnapshotPayloadWire & {
+  recorded_at?: string;
+  raw_data?: AppleHealthSnapshotPayload;
+};
 
 export type SendMessageOptions = {
-  health_data?: AppleHealthSnapshotPayloadWire | null;
+  health_data?: ChatHealthDataPayload | null;
+  location_context?: LocationContext | null;
 };
 
 export function sendMessage(message: string, options?: SendMessageOptions): Promise<void> {
-  const body: { message: string; health_data?: AppleHealthSnapshotPayloadWire } = { message };
+  const body: {
+    message: string;
+    health_data?: ChatHealthDataPayload;
+    location_context?: LocationContext;
+  } = { message };
   if (options?.health_data != null) {
     body.health_data = options.health_data;
+  }
+  if (options?.location_context != null) {
+    body.location_context = options.location_context;
   }
   return client.post('/chat', body).then(() => undefined);
 }
@@ -17,17 +39,38 @@ export type ReactionType = 'like' | 'dislike' | null;
 
 export type ReactionResponse = {
   ok: boolean;
-  message_id: string | number;
+  /** Id persistito del messaggio; può essere omesso se il server risolve solo per request_id. */
+  message_id?: string | number;
   reaction: ReactionType;
 };
 
-export function setMessageReaction(params: {
-  message_id: string;
-  reaction: ReactionType;
-  conversation_id?: string;
-}): Promise<ReactionResponse> {
+export type SetMessageReactionParams =
+  | {
+      message_id: string;
+      request_id?: undefined;
+      reaction: ReactionType;
+      conversation_id?: string;
+    }
+  | {
+      request_id: string;
+      message_id?: undefined;
+      reaction: ReactionType;
+      conversation_id?: string;
+    };
+
+export function setMessageReaction(params: SetMessageReactionParams): Promise<ReactionResponse> {
+  const body: Record<string, unknown> = { reaction: params.reaction };
+  if ('message_id' in params && params.message_id != null) {
+    body.message_id = params.message_id;
+  }
+  if ('request_id' in params && params.request_id != null) {
+    body.request_id = params.request_id;
+  }
+  if (params.conversation_id != null) {
+    body.conversation_id = params.conversation_id;
+  }
   return client
-    .post<ReactionResponse>('/chat/reaction', params)
+    .post<ReactionResponse>('/chat/reaction', body)
     .then((r) => r.data);
 }
 
@@ -39,7 +82,62 @@ export type ChatHistoryItem = {
   cards?: unknown[] | null;
   timestamp: string;
   reaction?: ReactionType;
+  request_id?: string | null;
 };
+
+export type QuickChipAction =
+  | { type: 'navigate'; route: 'Chat' | 'Dieta' | 'Today' | 'Foto' | 'Profilo' | 'Salute' }
+  | { type: 'message'; text: string };
+
+export type QuickChip = {
+  label: string;
+  action?: QuickChipAction;
+};
+
+export type QuickChipWire =
+  | string
+  | {
+      label?: unknown;
+      action?: {
+        type?: unknown;
+        route?: unknown;
+        text?: unknown;
+      } | null;
+    };
+
+function normalizeQuickChip(item: QuickChipWire): QuickChip | null {
+  if (typeof item === 'string') {
+    const label = item.trim();
+    if (!label) return null;
+    return { label, action: { type: 'message', text: label } };
+  }
+  if (!item || typeof item !== 'object') return null;
+  const label = typeof item.label === 'string' ? item.label.trim() : '';
+  if (!label) return null;
+  const action = item.action;
+  if (!action || typeof action !== 'object') {
+    return { label, action: { type: 'message', text: label } };
+  }
+  if (action.type === 'navigate') {
+    const route = action.route;
+    if (
+      route === 'Chat' ||
+      route === 'Dieta' ||
+      route === 'Today' ||
+      route === 'Foto' ||
+      route === 'Profilo' ||
+      route === 'Salute'
+    ) {
+      return { label, action: { type: 'navigate', route } };
+    }
+    return { label, action: { type: 'message', text: label } };
+  }
+  if (action.type === 'message') {
+    const text = typeof action.text === 'string' ? action.text.trim() : '';
+    return { label, action: { type: 'message', text: text || label } };
+  }
+  return { label, action: { type: 'message', text: label } };
+}
 
 export type ChatHistoryResponse = {
   messages: ChatHistoryItem[];
@@ -48,6 +146,7 @@ export type ChatHistoryResponse = {
     has_more: boolean;
     next_before_id: string | null;
   };
+  quick_chips?: QuickChip[];
 };
 
 export function getChatHistory(params?: {
@@ -56,7 +155,18 @@ export function getChatHistory(params?: {
 }): Promise<ChatHistoryResponse> {
   return client
     .get<ChatHistoryResponse>('/chat/history', { params })
-    .then((r) => r.data);
+    .then((r) => r.data)
+    .then((d) => {
+      if (!Object.prototype.hasOwnProperty.call(d, 'quick_chips')) return d;
+      const raw = Array.isArray(d.quick_chips) ? (d.quick_chips as QuickChipWire[]) : [];
+      const normalized = raw
+        .map((x) => normalizeQuickChip(x))
+        .filter((x): x is QuickChip => x != null);
+      return {
+        ...d,
+        quick_chips: normalized,
+      };
+    });
 }
 
 export type ConfirmResponse = {

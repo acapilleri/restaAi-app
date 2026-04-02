@@ -10,6 +10,9 @@ function toNum(v: unknown): number | null | undefined {
   return undefined;
 }
 
+/** Chiave TanStack Query per GET /profile (badge nudge, dati utente). */
+export const PROFILE_QUERY_KEY = ['profile', 'me'] as const;
+
 /** Formato restituito dal backend GET /profile */
 export type Profile = {
   id: number;
@@ -25,12 +28,24 @@ export type Profile = {
   current_weight?: number | null;
   memories_count?: number;
   premium?: boolean;
+  /** Spunti motivazionali non letti (retention nudge_logs), se esposto dal backend */
+  unread_nudge_count?: number;
 };
 
 export type ProfileResponse = { profile: Profile };
 
+function normalizeUnreadNudgeCount(o: Record<string, unknown>): number | undefined {
+  const n =
+    toNum(o.unread_nudge_count) ??
+    toNum(o.nudge_unread_count) ??
+    toNum(o.nudgeUnreadCount);
+  if (n == null || Number.isNaN(n)) return undefined;
+  const i = Math.max(0, Math.floor(n));
+  return i;
+}
+
 /** Backend può restituire { profile }, { user }, oppure l'oggetto alla radice */
-function normalizeProfileResponse(data: unknown): ProfileResponse {
+export function normalizeProfileResponse(data: unknown): ProfileResponse {
   if (!data || typeof data !== 'object') return { profile: {} as Profile };
   const d = data as Record<string, unknown>;
   const profile =
@@ -50,6 +65,8 @@ function normalizeProfileResponse(data: unknown): ProfileResponse {
     const p = { ...(profile as Profile) };
     if (goal != null) p.goal_weight_kg = goal;
     if (current != null) p.current_weight = current;
+    const unread = normalizeUnreadNudgeCount(o);
+    if (unread != null) p.unread_nudge_count = unread;
     return { profile: p };
   }
   return { profile: data as Profile };

@@ -14,15 +14,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useAuth } from '../context/AuthContext';
 import { getProfile, updateProfile } from '../api/profile';
 import type { Profile } from '../api/profile';
 import { getWeights, latestWeightKgFromResponse } from '../api/weights';
 import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
-import { DrawerMenuButton } from '../components/navigation/DrawerMenuButton';
+import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
 import DeviceInfo from 'react-native-device-info';
-import type { ProfiloStackParamList } from '../navigation/types';
+import type { MainParamList, ProfiloStackParamList } from '../navigation/types';
 
 function formatWeightKg(n: number | null | undefined): string {
   if (n == null || Number.isNaN(n)) return '—';
@@ -32,6 +33,7 @@ function formatWeightKg(n: number | null | undefined): string {
 
 export function ProfiloScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<ProfiloStackParamList, 'ProfiloMain'>>();
+  const drawerNavigation = useNavigation<DrawerNavigationProp<MainParamList>>();
   const { user, logout } = useAuth();
   const { colors } = useTheme();
 
@@ -208,7 +210,7 @@ export function ProfiloScreen() {
       if (action === 'edit') setEditModal(true);
       if (action === 'dieta') {
         hapticLight();
-        navigation.navigate('Dieta');
+        drawerNavigation.navigate('Dieta');
       }
       if (action === 'config') {
         hapticLight();
@@ -216,7 +218,7 @@ export function ProfiloScreen() {
       }
       if (action === 'weights') Alert.alert('Storico pesate', 'Apri la tab Today per il riepilogo peso.');
     },
-    [navigation],
+    [drawerNavigation, navigation],
   );
 
   const handleSaveProfile = useCallback(async () => {

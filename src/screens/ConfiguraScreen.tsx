@@ -1,15 +1,53 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Switch, TouchableOpacity, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Switch,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { RESULTS } from 'react-native-permissions';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useTheme, type ThemePreference } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
-import { DrawerMenuButton } from '../components/navigation/DrawerMenuButton';
+import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
 import { getChatKeyboardAutoClose, setChatKeyboardAutoClose } from '../chat/keyboardPreference';
 import { getStoredLanguage, setStoredLanguage, type AppLanguage } from '../api/authStorage';
 import type { ProfiloStackParamList } from '../navigation/types';
+import {
+  ensureNotificationPermission,
+  getFcmToken,
+  getNotificationPermissionStatus,
+} from '../services/pushMessaging';
+import {
+  ensureLocationPermission,
+  getCurrentCoordinates,
+  getLocationPermissionStatus,
+  openSettings,
+} from '../services/geolocation';
+
+function permissionLabel(status: string): string {
+  switch (status) {
+    case RESULTS.GRANTED:
+      return 'Autorizzato';
+    case RESULTS.LIMITED:
+      return 'Autorizzato (limitato)';
+    case RESULTS.DENIED:
+      return 'Non concesso';
+    case RESULTS.BLOCKED:
+      return 'Bloccato nelle impostazioni';
+    case RESULTS.UNAVAILABLE:
+      return 'Non disponibile';
+    default:
+      return '—';
+  }
+}
 
 const APPEARANCE_OPTIONS: { value: ThemePreference; label: string; sub: string }[] = [
   { value: 'system', label: 'Sistema', sub: 'Segue le impostazioni del dispositivo' },
@@ -27,6 +65,10 @@ export function ConfiguraScreen() {
   const { colors, preference, setPreference } = useTheme();
   const [chatKeyboardAutoClose, setChatKeyboardAutoCloseState] = useState(true);
   const [language, setLanguage] = useState<AppLanguage>('it');
+  const [notifPermissionStatus, setNotifPermissionStatus] = useState<string | null>(null);
+  const [locPermissionStatus, setLocPermissionStatus] = useState<string | null>(null);
+  const [notifBusy, setNotifBusy] = useState(false);
+  const [locBusy, setLocBusy] = useState(false);
 
   const styles = useMemo(
     () =>
@@ -91,8 +133,36 @@ export function ConfiguraScreen() {
         appearanceLabel: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
         appearanceSub: { marginTop: 2, fontSize: 12, color: colors.textSecondary },
         checkWrap: { width: 28, alignItems: 'flex-end' },
+        permActionsRow: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 10,
+          marginTop: 10,
+          paddingBottom: 4,
+        },
+        permLink: {
+          paddingVertical: 8,
+          paddingHorizontal: 4,
+        },
+        permLinkText: { fontSize: 14, fontWeight: '600', color: colors.primary },
+        permStatus: { marginTop: 4, fontSize: 12, color: colors.textSecondary },
       }),
     [colors],
+  );
+
+  const refreshPermissionLabels = useCallback(async () => {
+    const [n, l] = await Promise.all([
+      getNotificationPermissionStatus(),
+      getLocationPermissionStatus(),
+    ]);
+    setNotifPermissionStatus(n);
+    setLocPermissionStatus(l);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshPermissionLabels();
+    }, [refreshPermissionLabels]),
   );
 
   useEffect(() => {
@@ -106,6 +176,55 @@ export function ConfiguraScreen() {
     return () => {
       active = false;
     };
+  }, []);
+
+  const onRequestNotifications = useCallback(async () => {
+    setNotifBusy(true);
+    try {
+      await ensureNotificationPermission();
+      await getFcmToken();
+      await refreshPermissionLabels();
+    } catch {
+      Alert.alert('Notifiche', 'Impossibile completare la richiesta.');
+    } finally {
+      setNotifBusy(false);
+    }
+  }, [refreshPermissionLabels]);
+
+  const onRequestLocation = useCallback(async () => {
+    setLocBusy(true);
+    try {
+      await ensureLocationPermission();
+      await refreshPermissionLabels();
+    } catch {
+      Alert.alert('Posizione', 'Impossibile completare la richiesta.');
+    } finally {
+      setLocBusy(false);
+    }
+  }, [refreshPermissionLabels]);
+
+  const onTryLocation = useCallback(async () => {
+    setLocBusy(true);
+    try {
+      const ok = await ensureLocationPermission();
+      if (!ok) {
+        Alert.alert('Posizione', 'Permesso non concesso.');
+        await refreshPermissionLabels();
+        return;
+      }
+      const { latitude, longitude } = await getCurrentCoordinates();
+      Alert.alert('Posizione', `Lat: ${latitude.toFixed(5)}\nLon: ${longitude.toFixed(5)}`);
+    } catch {
+      Alert.alert('Posizione', 'Impossibile leggere la posizione.');
+    } finally {
+      setLocBusy(false);
+      await refreshPermissionLabels();
+    }
+  }, [refreshPermissionLabels]);
+
+  const onOpenSettings = useCallback(() => {
+    hapticLight();
+    void openSettings();
   }, []);
 
   const onToggleKeyboardAutoClose = useCallback(async (enabled: boolean) => {
@@ -171,6 +290,105 @@ export function ConfiguraScreen() {
               trackColor={{ false: switchTrackOff, true: colors.primaryMuted }}
               thumbColor={chatKeyboardAutoClose ? colors.primary : switchThumbOff}
             />
+          </View>
+        </View>
+
+        <Text style={styles.sectionLabel}>Notifiche</Text>
+        <View style={styles.card}>
+          <View style={styles.preferenceRow}>
+            <View style={styles.preferenceTextCol}>
+              <Text style={styles.preferenceTitle}>Notifiche push</Text>
+              <Text style={styles.preferenceSub}>
+                Ricevi avvisi dal servizio (Firebase Cloud Messaging). Sostituisci i file di configurazione Firebase con quelli del tuo progetto.
+              </Text>
+              {notifPermissionStatus != null ? (
+                <Text style={styles.permStatus}>Stato permesso: {permissionLabel(notifPermissionStatus)}</Text>
+              ) : null}
+              <View style={styles.permActionsRow}>
+                {notifBusy ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={styles.permLink}
+                      onPress={() => {
+                        hapticLight();
+                        void onRequestNotifications();
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Richiedi permesso notifiche"
+                    >
+                      <Text style={styles.permLinkText}>Richiedi permesso</Text>
+                    </TouchableOpacity>
+                    {notifPermissionStatus === RESULTS.BLOCKED ? (
+                      <TouchableOpacity
+                        style={styles.permLink}
+                        onPress={onOpenSettings}
+                        accessibilityRole="button"
+                        accessibilityLabel="Apri impostazioni notifiche"
+                      >
+                        <Text style={styles.permLinkText}>Apri impostazioni</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </>
+                )}
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.sectionLabel}>Posizione</Text>
+        <View style={styles.card}>
+          <View style={styles.preferenceRow}>
+            <View style={styles.preferenceTextCol}>
+              <Text style={styles.preferenceTitle}>Geolocalizzazione</Text>
+              <Text style={styles.preferenceSub}>
+                Accesso alla posizione solo mentre usi l’app (nessun tracciamento in background).
+              </Text>
+              {locPermissionStatus != null ? (
+                <Text style={styles.permStatus}>Stato permesso: {permissionLabel(locPermissionStatus)}</Text>
+              ) : null}
+              <View style={styles.permActionsRow}>
+                {locBusy ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={styles.permLink}
+                      onPress={() => {
+                        hapticLight();
+                        void onRequestLocation();
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Richiedi permesso posizione"
+                    >
+                      <Text style={styles.permLinkText}>Richiedi permesso</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.permLink}
+                      onPress={() => {
+                        hapticLight();
+                        void onTryLocation();
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Prova lettura posizione"
+                    >
+                      <Text style={styles.permLinkText}>Prova posizione</Text>
+                    </TouchableOpacity>
+                    {locPermissionStatus === RESULTS.BLOCKED ? (
+                      <TouchableOpacity
+                        style={styles.permLink}
+                        onPress={onOpenSettings}
+                        accessibilityRole="button"
+                        accessibilityLabel="Apri impostazioni posizione"
+                      >
+                        <Text style={styles.permLinkText}>Apri impostazioni</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </>
+                )}
+              </View>
+            </View>
           </View>
         </View>
 

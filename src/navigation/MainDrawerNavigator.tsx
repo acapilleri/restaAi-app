@@ -1,16 +1,19 @@
 import React, { useMemo } from 'react';
 import { createDrawerNavigator, DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
+import { HEALTHKIT_HISTORICAL_SYNC_STORAGE_KEY, syncHistoricalHealthData } from '../services/healthKitHistoricalSync';
 import type { AppStackParamList } from './rootTypes';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ChatScreen } from '../screens/ChatScreen';
 import { FotoScreen } from '../screens/FotoScreen';
 import { ChatDemosScreen } from '../screens/ChatDemosScreen';
+import { DietaStackNavigator } from './DietaStackNavigator';
 import { ProfiloStackNavigator } from './ProfiloStackNavigator';
 import { SaluteStackNavigator } from './SaluteStackNavigator';
 import type { MainParamList } from './types';
@@ -19,8 +22,9 @@ const Drawer = createDrawerNavigator<MainParamList>();
 
 const DRAWER_ITEMS: { name: keyof MainParamList; label: string; ion: string }[] = [
   { name: 'Chat', label: 'chat', ion: 'chatbubble-ellipses' },
-  { name: 'Profilo', label: 'profilo', ion: 'person' },
+  { name: 'Dieta', label: 'dieta', ion: 'nutrition-outline' },
   { name: 'Salute', label: 'salute', ion: 'heart-outline' },
+  { name: 'Profilo', label: 'profilo', ion: 'person' },
 ];
 
 function CustomDrawerContent(props: DrawerContentComponentProps) {
@@ -146,6 +150,39 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
               <Text style={styles.drawerLabelDevSub}>card demo + chat vuota</Text>
             </View>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.drawerRow}
+            onPress={() => {
+              hapticLight();
+              void (async () => {
+                if (Platform.OS !== 'ios') {
+                  Alert.alert('Solo iOS', 'Lo storico HealthKit è disponibile solo su iOS.');
+                  props.navigation.closeDrawer();
+                  return;
+                }
+                try {
+                  await AsyncStorage.removeItem(HEALTHKIT_HISTORICAL_SYNC_STORAGE_KEY);
+                  const ok = await syncHistoricalHealthData();
+                  if (ok) {
+                    await AsyncStorage.setItem(HEALTHKIT_HISTORICAL_SYNC_STORAGE_KEY, 'true');
+                    Alert.alert('Fatto', 'Storico HealthKit risincronizzato.');
+                  } else {
+                    Alert.alert('Errore', 'Impossibile completare la risincronizzazione.');
+                  }
+                } catch (e) {
+                  Alert.alert('Errore', 'Impossibile completare la risincronizzazione.');
+                }
+                props.navigation.closeDrawer();
+              })();
+            }}
+            activeOpacity={0.85}
+          >
+            <Icon name="pulse-outline" size={22} color={colors.textMuted} />
+            <View style={styles.devLabelCol}>
+              <Text style={styles.drawerLabelDev}>Re-sync HealthKit history</Text>
+              <Text style={styles.drawerLabelDevSub}>forza import ~90 giorni (3 mesi)</Text>
+            </View>
+          </TouchableOpacity>
         </>
       ) : null}
     </DrawerContentScrollView>
@@ -175,11 +212,12 @@ export function MainDrawerNavigator() {
       }}
     >
       <Drawer.Screen name="Chat" component={ChatScreen} />
+      <Drawer.Screen name="Dieta" component={DietaStackNavigator} />
       <Drawer.Screen name="ChatDemos" component={ChatDemosScreen} />
       <Drawer.Screen name="Today" component={HomeScreen} />
       <Drawer.Screen name="Foto" component={FotoScreen} />
-      <Drawer.Screen name="Profilo" component={ProfiloStackNavigator} />
       <Drawer.Screen name="Salute" component={SaluteStackNavigator} />
+      <Drawer.Screen name="Profilo" component={ProfiloStackNavigator} />
     </Drawer.Navigator>
   );
 }

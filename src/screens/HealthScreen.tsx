@@ -20,19 +20,22 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { Card } from '../components/Card';
 import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
-import { DrawerMenuButton } from '../components/navigation/DrawerMenuButton';
+import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
 import {
   APPLE_HEALTH_STORAGE_KEYS,
   fetchAppleHealthSnapshot,
   fetchBodyMassHistory,
   formatWeightDate,
   getEssentialReadAuthRequestStatus,
+  HEALTH_SYNC_TIMESTAMPS_KEYS,
   isAppleHealthSupported,
   requestAppleHealthReadAccess,
+  syncDailySummaryToBackend,
   type AppleHealthSnapshot,
   type BodyMassHistoryEntry,
   type SaluteMetricId,
 } from '../services/appleHealth';
+import { HEALTH_LAST_BULK_SYNC_AT_KEY, syncHistoricalIfNeeded } from '../services/healthKitHistoricalSync';
 import type { SaluteStackParamList } from '../navigation/types';
 
 function formatNumber(n: number | null, suffix = ''): string {
@@ -61,6 +64,23 @@ function formatHistoryRowDate(d: Date): string {
     });
   } catch {
     return '';
+  }
+}
+
+function formatSaluteSyncInstant(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (!Number.isFinite(d.getTime())) return '—';
+    return d.toLocaleString('it-IT', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '—';
   }
 }
 
@@ -130,6 +150,22 @@ export function HealthScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [essentialAuthStatus, setEssentialAuthStatus] = useState<AuthorizationRequestStatus | null>(null);
   const [weightHistory, setWeightHistory] = useState<BodyMassHistoryEntry[]>([]);
+  const [lastDailySyncIso, setLastDailySyncIso] = useState<string | null>(null);
+  const [lastBulkSyncIso, setLastBulkSyncIso] = useState<string | null>(null);
+
+  const loadSyncTimestamps = useCallback(async () => {
+    try {
+      const [d, b] = await Promise.all([
+        AsyncStorage.getItem(HEALTH_SYNC_TIMESTAMPS_KEYS.lastDailySyncAt),
+        AsyncStorage.getItem(HEALTH_LAST_BULK_SYNC_AT_KEY),
+      ]);
+      setLastDailySyncIso(d);
+      setLastBulkSyncIso(b);
+    } catch {
+      setLastDailySyncIso(null);
+      setLastBulkSyncIso(null);
+    }
+  }, []);
 
   const refreshHealthData = useCallback(async () => {
     const [data, authSt, wh] = await Promise.all([
@@ -178,6 +214,7 @@ export function HealthScreen() {
     }
     try {
       await refreshHealthData();
+      await loadSyncTimestamps();
     } catch {
       setSnapshot(null);
       setWeightHistory([]);
@@ -186,7 +223,7 @@ export function HealthScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [linked, refreshHealthData]);
+  }, [linked, refreshHealthData, loadSyncTimestamps]);
 
   useFocusEffect(
     useCallback(() => {
@@ -215,7 +252,11 @@ export function HealthScreen() {
         setLinked(true);
         setLoading(true);
         try {
+          if (!cancelled) {
+            void syncDailySummaryToBackend();
+          }
           if (!cancelled) await refreshHealthData();
+          if (!cancelled) await loadSyncTimestamps();
         } catch {
           if (!cancelled) {
             setSnapshot(null);
@@ -232,7 +273,7 @@ export function HealthScreen() {
     return () => {
       cancelled = true;
     };
-  }, [prefsReady, supported, refreshHealthData]);
+  }, [prefsReady, supported, refreshHealthData, loadSyncTimestamps]);
 
   const onRefresh = useCallback(() => {
     hapticLight();
@@ -265,7 +306,9 @@ export function HealthScreen() {
     setLinked(true);
     setLoading(true);
     try {
+      void syncDailySummaryToBackend();
       await refreshHealthData();
+      await loadSyncTimestamps();
     } catch {
       setSnapshot(null);
       setWeightHistory([]);
@@ -273,7 +316,7 @@ export function HealthScreen() {
     } finally {
       setLoading(false);
     }
-  }, [refreshHealthData]);
+  }, [refreshHealthData, loadSyncTimestamps]);
 
   const handleReopenPermissions = useCallback(async () => {
     hapticLight();
@@ -292,6 +335,25 @@ export function HealthScreen() {
       setLoading(false);
     }
   }, [refreshHealthData]);
+
+  const handleSyncToServer = useCallback(() => {
+    hapticLight();
+    Alert.alert(
+      'Sincronizza dati',
+      'Invia il riepilogo di oggi al server. Se non è già stato importato, viene aggiunto anche lo storico degli ultimi ~3 mesi (una sola volta).',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Sincronizza',
+          onPress: async () => {
+            await syncDailySummaryToBackend();
+            await syncHistoricalIfNeeded();
+            await loadSyncTimestamps();
+          },
+        },
+      ],
+    );
+  }, [loadSyncTimestamps]);
 
   const confirmUnlinkAppleHealth = useCallback(() => {
     hapticLight();
@@ -425,6 +487,24 @@ export function HealthScreen() {
         },
         unlinkBtnText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
         unlinkHint: { fontSize: 12, color: colors.textMuted, lineHeight: 17, marginTop: 10, textAlign: 'center' },
+        syncCard: {
+          backgroundColor: colors.bgCard,
+          borderWidth: 1,
+          borderColor: colors.primary,
+          borderRadius: 12,
+          padding: 14,
+          marginBottom: 12,
+        },
+        syncCardTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, marginBottom: 6 },
+        syncCardBody: { fontSize: 13, color: colors.textSecondary, lineHeight: 18, marginBottom: 12 },
+        syncCardMeta: { fontSize: 12, color: colors.textMuted, lineHeight: 17, marginBottom: 6 },
+        syncBtn: {
+          backgroundColor: colors.primary,
+          paddingVertical: 12,
+          borderRadius: 10,
+          alignItems: 'center',
+        },
+        syncBtnText: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '600' },
       }),
     [colors],
   );
@@ -693,6 +773,24 @@ export function HealthScreen() {
                   onPress={canOpenStorico ? () => openMetricStorico('sleep') : undefined}
                 />
               </Card>
+
+              <View style={[styles.syncCard, { marginTop: 12 }]}>
+                <Text style={styles.syncCardTitle}>Sincronizzazione con Resta</Text>
+                <Text style={styles.syncCardBody}>
+                  Il riepilogo di oggi viene inviato automaticamente quando apri l’app. Qui puoi reinviare oggi e, se non
+                  è già stato fatto, avviare l’import dello storico (~3 mesi, una sola volta).
+                </Text>
+                <Text style={styles.syncCardMeta}>
+                  Ultimo invio automatico: {formatSaluteSyncInstant(lastDailySyncIso)}
+                </Text>
+                <Text style={[styles.syncCardMeta, { marginBottom: 12 }]}>
+                  Ultimo import storico (bulk):{' '}
+                  {lastBulkSyncIso ? formatSaluteSyncInstant(lastBulkSyncIso) : 'Mai'}
+                </Text>
+                <TouchableOpacity style={styles.syncBtn} onPress={handleSyncToServer} activeOpacity={0.85}>
+                  <Text style={styles.syncBtnText}>Sincronizza dati ora</Text>
+                </TouchableOpacity>
+              </View>
 
               <Card style={{ marginTop: 12 }}>
                 <TouchableOpacity style={styles.unlinkBtn} onPress={confirmUnlinkAppleHealth} activeOpacity={0.85}>

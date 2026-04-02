@@ -21,7 +21,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
-import { DrawerMenuButton } from '../components/navigation/DrawerMenuButton';
+import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
 import { getDietPlans, createDietPlan, deleteDietPlan, reactivateDietPlan, scanDietPlan } from '../api/dietPlan';
 import type { DietPlanRecord, DietPlanMeal } from '../api/dietPlan';
 import { getStoredLanguage, type AppLanguage } from '../api/authStorage';

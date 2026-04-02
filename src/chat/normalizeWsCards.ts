@@ -1,4 +1,5 @@
 import type { CardData } from '../types/chat';
+import { parseNearbyRestaurantRecommendationData } from './nearbyRestaurantCard';
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -202,6 +203,14 @@ export function normalizeChatCardsFromWire(raw: unknown): CardData[] {
     }
     if (type === 'pending_action_confirm' && isRecord(item.data)) {
       out.push(item as CardData);
+      continue;
+    }
+
+    if (type === 'nearby_restaurant_recommendation' && isRecord(item.data)) {
+      const parsed = parseNearbyRestaurantRecommendationData(item.data);
+      if (parsed) {
+        out.push({ type: 'nearby_restaurant_recommendation', data: parsed });
+      }
       continue;
     }
     if (

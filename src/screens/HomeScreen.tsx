@@ -28,7 +28,7 @@ import type { DietPlanMeal } from '../api/dietPlan';
 import type { AppColors } from '../theme/colors';
 import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
-import { DrawerMenuButton } from '../components/navigation/DrawerMenuButton';
+import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
 
 const DAY_NAMES_IT = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
 const MEAL_LABELS = ['colazione', 'pranzo', 'spuntino', 'cena'];

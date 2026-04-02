@@ -15,6 +15,7 @@ import {
   IntolerancesConfirmCard,
 } from './cards/ProfileConfirmCards';
 import { RecipeAlternativeCard } from './cards/RecipeAlternativeCard';
+import { NearbyRestaurantRecommendationCard } from './cards/NearbyRestaurantRecommendationCard';
 import { ChatMarkdown } from './ChatMarkdown';
 import { softWrapText } from '../../utils/softWrap';
 import { ReactionOverlay } from './ReactionOverlay';
@@ -384,6 +385,13 @@ export function MessageRenderer({
           }
           case 'recipe_alternative':
             return <RecipeAlternativeCard key={`${message.id}-recipe-${i}`} data={card.data} />;
+          case 'nearby_restaurant_recommendation':
+            return (
+              <NearbyRestaurantRecommendationCard
+                key={`${message.id}-nearby-${i}`}
+                data={card.data}
+              />
+            );
           default:
             return null;
         }

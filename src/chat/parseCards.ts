@@ -1,4 +1,5 @@
 import type { CardData } from '../types/chat';
+import { parseNearbyRestaurantRecommendationData } from './nearbyRestaurantCard';
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -256,6 +257,14 @@ export function parseCardsFromHistory(raw: unknown): CardData[] {
             unit: typeof pending.unit === 'string' ? pending.unit : undefined,
           },
         });
+        break;
+      }
+
+      case 'nearby_restaurant_recommendation': {
+        const parsed = parseNearbyRestaurantRecommendationData(data);
+        if (parsed) {
+          out.push({ type: 'nearby_restaurant_recommendation', data: parsed });
+        }
         break;
       }
       case 'recipe_alternative': {
