@@ -7,16 +7,20 @@ import {
   StyleSheet,
   RefreshControl,
   ActivityIndicator,
-  Alert,
   Image,
 } from 'react-native';
+// eslint-disable-next-line @react-native/no-deep-imports
+import Alert from 'react-native/Libraries/Alert/Alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { launchCamera } from 'react-native-image-picker';
 import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
 import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
-import { getPhotos, uploadPhoto, deletePhoto } from '../api/photos';
-import type { PhotosResponse } from '../api/photos';
+import { getBodyAnalyses, uploadAndAnalyze } from '../api/bodyAnalysis';
+import type { BodyAnalysis } from '../api/bodyAnalysis';
+import type { FotoStackParamList } from '../navigation/types';
 
 function formatDate(s: string) {
   try {
@@ -28,6 +32,7 @@ function formatDate(s: string) {
 
 export function FotoScreen() {
   const { colors } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<FotoStackParamList, 'FotoMain'>>();
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -40,16 +45,29 @@ export function FotoScreen() {
         months: { fontSize: 15, color: colors.primary, fontWeight: '500' },
         loadingBox: { padding: 24, alignItems: 'center' },
         errorText: { fontSize: 14, color: colors.amber, marginBottom: 14 },
-        photoGrid: { flexDirection: 'row', gap: 12, marginBottom: 14 },
-        photoCard: { flex: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
-        photoCardActive: { borderWidth: 2, borderColor: colors.primary },
-        photoImg: { height: 120, width: '100%', backgroundColor: colors.bgSecondary },
-        photoMeta: { padding: 10, paddingHorizontal: 12, backgroundColor: colors.bgSecondary },
-        photoMetaActive: { backgroundColor: colors.greenPill },
-        photoDate: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
-        photoKg: { fontSize: 15, color: colors.textPrimary, fontWeight: '500' },
-        photoDateActive: { fontSize: 12, color: colors.primaryDarkLabel },
-        photoKgActive: { fontSize: 15, color: colors.primaryDark, fontWeight: '500' },
+        emptyCard: {
+          backgroundColor: colors.bgCard,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: 16,
+          marginBottom: 14,
+        },
+        emptyTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, marginBottom: 6 },
+        emptyText: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+        latestCard: {
+          backgroundColor: colors.bgCard,
+          borderRadius: 18,
+          borderWidth: 1,
+          borderColor: colors.border,
+          overflow: 'hidden',
+          marginBottom: 14,
+        },
+        latestImage: { width: '100%', height: 220, backgroundColor: colors.bgSecondary },
+        latestBody: { padding: 14 },
+        latestDate: { fontSize: 13, color: colors.textMuted, fontWeight: '600', marginBottom: 6 },
+        latestTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 },
+        latestHint: { fontSize: 13, color: colors.textSecondary },
         aiComment: {
           backgroundColor: colors.greenPill,
           borderRadius: 14,
@@ -59,22 +77,6 @@ export function FotoScreen() {
         },
         aiCommentLbl: { fontSize: 12, color: colors.primaryDarkLabel, fontWeight: '500', marginBottom: 6 },
         aiCommentTxt: { fontSize: 15, color: colors.primaryDark, lineHeight: 22 },
-        progressCard: {
-          backgroundColor: colors.bgCard,
-          borderWidth: 1,
-          borderColor: colors.border,
-          borderRadius: 14,
-          padding: 14,
-          paddingHorizontal: 16,
-          marginBottom: 14,
-        },
-        progressHeader: { flexDirection: 'row', justifyContent: 'space-between' },
-        progressLbl: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
-        progressPct: { fontSize: 13, color: colors.primary, fontWeight: '500' },
-        miniStats: { flexDirection: 'row', gap: 10, marginBottom: 14 },
-        miniStat: { flex: 1, backgroundColor: colors.bgSecondary, borderRadius: 12, padding: 12, alignItems: 'center' },
-        miniVal: { fontSize: 18, fontWeight: '600', color: colors.textPrimary },
-        miniLbl: { fontSize: 12, color: colors.textSecondary },
         uploadBtn: {
           backgroundColor: colors.primary,
           borderRadius: 14,
@@ -88,24 +90,24 @@ export function FotoScreen() {
         uploadBtnText: { fontSize: 16, fontWeight: '600', color: colors.textOnPrimary },
         listSection: { marginTop: 8 },
         listSectionTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: 10 },
-        listRow: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingVertical: 10,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.divider,
-          gap: 12,
+        historyGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+        historyCard: {
+          width: '48%',
+          borderRadius: 14,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.bgCard,
         },
-        listThumb: { width: 56, height: 56, borderRadius: 8 },
-        listMeta: { flex: 1 },
-        listDate: { fontSize: 14, color: colors.textPrimary },
-        listKg: { fontSize: 13, color: colors.textSecondary },
-        listDeleteHint: { fontSize: 11, color: colors.textMuted },
+        historyImage: { width: '100%', height: 150, backgroundColor: colors.bgSecondary },
+        historyBody: { padding: 10 },
+        historyDate: { fontSize: 13, color: colors.textPrimary, fontWeight: '600' },
+        historyHint: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
       }),
     [colors],
   );
 
-  const [data, setData] = useState<PhotosResponse | null>(null);
+  const [analyses, setAnalyses] = useState<BodyAnalysis[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -114,10 +116,10 @@ export function FotoScreen() {
   const load = useCallback(async () => {
     try {
       setError(null);
-      const res = await getPhotos();
-      setData(res);
+      const res = await getBodyAnalyses();
+      setAnalyses(res);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Errore caricamento foto');
+      setError(e instanceof Error ? e.message : 'Errore caricamento analisi corpo');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -134,27 +136,36 @@ export function FotoScreen() {
     load();
   }, [load]);
 
+  const openDetail = useCallback(
+    (analysis: BodyAnalysis) => {
+      navigation.navigate('FotoDetail', { analysis });
+    },
+    [navigation],
+  );
+
   const handleAddPhoto = useCallback(() => {
-    launchImageLibrary(
+    launchCamera(
       { mediaType: 'photo', quality: 0.8 },
       async (res) => {
+        if (res.errorCode) {
+          Alert.alert('Errore', 'Impossibile aprire la fotocamera. Controlla i permessi e riprova.');
+          return;
+        }
         if (res.didCancel || !res.assets?.[0]) return;
         const asset = res.assets[0];
         const uri = asset.uri ?? asset.android?.uri;
         if (!uri) return;
         setUploading(true);
         try {
-          const formData = new FormData();
-          formData.append('photo', {
+          await uploadAndAnalyze({
             uri,
-            type: asset.type ?? 'image/jpeg',
-            name: asset.fileName ?? 'photo.jpg',
-          } as unknown as Blob);
-          formData.append('taken_on', new Date().toISOString().split('T')[0]);
-          await uploadPhoto(formData);
+            type: asset.type,
+            fileName: asset.fileName,
+          });
           await load();
+          Alert.alert('Analisi completata', 'Lettura salvata.');
         } catch (e) {
-          Alert.alert('Errore', e instanceof Error ? e.message : 'Upload fallito');
+          Alert.alert('Errore', e instanceof Error ? e.message : 'Upload o analisi fallita. Riprova.');
         } finally {
           setUploading(false);
         }
@@ -162,34 +173,8 @@ export function FotoScreen() {
     );
   }, [load]);
 
-  const handleDelete = useCallback(
-    (id: number) => {
-      Alert.alert('Elimina foto', 'Vuoi eliminare questa foto?', [
-        { text: 'Annulla', style: 'cancel' },
-        {
-          text: 'Elimina',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deletePhoto(id);
-              await load();
-            } catch (e) {
-              Alert.alert('Errore', e instanceof Error ? e.message : 'Eliminazione fallita');
-            }
-          },
-        },
-      ]);
-    },
-    [load],
-  );
-
-  const comparison = data?.comparison;
-  const photos = data?.photos ?? [];
-  const progress = data?.photos?.length
-    ? Math.round(
-        (photos.filter((p) => p.weight_at_photo != null).length / photos.length) * 100,
-      )
-    : 0;
+  const latestAnalysis = analyses[0] ?? null;
+  const latestSummary = latestAnalysis?.ai_summary || latestAnalysis?.readings.notes || '';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -202,88 +187,49 @@ export function FotoScreen() {
       >
         <View style={styles.pad}>
           <View style={styles.topRow}>
-            <Text style={[styles.title, styles.titleWithMenu]}>Progresso foto</Text>
-            <Text style={styles.months}>{photos.length} foto</Text>
+            <Text style={[styles.title, styles.titleWithMenu]}>Foto corpo</Text>
+            <Text style={styles.months}>{analyses.length} foto</Text>
             <DrawerMenuButton placement="trailing" />
           </View>
 
-          {loading && !data ? (
+          {loading && analyses.length === 0 ? (
             <View style={styles.loadingBox}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
-          ) : error && !data ? (
+          ) : error && analyses.length === 0 ? (
             <Text style={styles.errorText}>{error}</Text>
-          ) : comparison?.first && comparison?.latest ? (
-            <View style={styles.photoGrid}>
-              <View style={styles.photoCard}>
-                <Image
-                  source={{ uri: comparison.first.url }}
-                  style={styles.photoImg}
-                  resizeMode="cover"
-                />
-                <View style={styles.photoMeta}>
-                  <Text style={styles.photoDate}>{formatDate(comparison.first.taken_on)}</Text>
-                  <Text style={styles.photoKg}>
-                    {comparison.first.weight_at_photo != null
-                      ? `${comparison.first.weight_at_photo} kg`
-                      : '—'}
-                  </Text>
-                </View>
+          ) : latestAnalysis ? (
+            <TouchableOpacity
+              style={styles.latestCard}
+              onPress={() => openDetail(latestAnalysis)}
+              activeOpacity={0.9}
+            >
+              <Image
+                source={{ uri: latestAnalysis.photo_url }}
+                style={styles.latestImage}
+                resizeMode="cover"
+              />
+              <View style={styles.latestBody}>
+                <Text style={styles.latestDate}>{formatDate(latestAnalysis.taken_on)}</Text>
+                <Text style={styles.latestTitle}>Ultima foto analizzata</Text>
+                <Text style={styles.latestHint}>Tocca per vedere il dettaglio completo.</Text>
               </View>
-              <View style={[styles.photoCard, styles.photoCardActive]}>
-                <Image
-                  source={{ uri: comparison.latest.url }}
-                  style={styles.photoImg}
-                  resizeMode="cover"
-                />
-                <View style={[styles.photoMeta, styles.photoMetaActive]}>
-                  <Text style={styles.photoDateActive}>{formatDate(comparison.latest.taken_on)}</Text>
-                  <Text style={styles.photoKgActive}>
-                    {comparison.latest.weight_at_photo != null
-                      ? `${comparison.latest.weight_at_photo} kg`
-                      : '—'}
-                  </Text>
-                </View>
-              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>Nessuna foto disponibile</Text>
+              <Text style={styles.emptyText}>
+                Fai una foto corpo per salvare lo storico e leggere l'analisi nella schermata di dettaglio.
+              </Text>
             </View>
-          ) : photos.length > 0 ? (
-            <View style={styles.photoGrid}>
-              {photos.slice(0, 2).map((p) => (
-                <View key={p.id} style={styles.photoCard}>
-                  <Image source={{ uri: p.url }} style={styles.photoImg} resizeMode="cover" />
-                  <View style={styles.photoMeta}>
-                    <Text style={styles.photoDate}>{formatDate(p.taken_on)}</Text>
-                    <Text style={styles.photoKg}>
-                      {p.weight_at_photo != null ? `${p.weight_at_photo} kg` : '—'}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          ) : null}
+          )}
 
-          {comparison?.analysis ? (
+          {latestSummary ? (
             <View style={styles.aiComment}>
-              <Text style={styles.aiCommentLbl}>analisi AI del progresso</Text>
-              <Text style={styles.aiCommentTxt}>{comparison.analysis}</Text>
+              <Text style={styles.aiCommentLbl}>riassunto più recente</Text>
+              <Text style={styles.aiCommentTxt}>{latestSummary}</Text>
             </View>
           ) : null}
-
-          {data && (comparison?.first || comparison?.latest) ? (
-            <View style={styles.progressCard}>
-              <View style={styles.progressHeader}>
-                <Text style={styles.progressLbl}>percorso verso obiettivo</Text>
-                <Text style={styles.progressPct}>{progress}%</Text>
-              </View>
-            </View>
-          ) : null}
-
-          <View style={styles.miniStats}>
-            <View style={styles.miniStat}>
-              <Text style={styles.miniVal}>{photos.length}</Text>
-              <Text style={styles.miniLbl}>foto totali</Text>
-            </View>
-          </View>
 
           <TouchableOpacity
             style={styles.uploadBtn}
@@ -293,29 +239,33 @@ export function FotoScreen() {
             {uploading ? (
               <ActivityIndicator size="small" color={colors.textOnPrimary} />
             ) : (
-              <Text style={styles.uploadBtnText}>aggiungi foto oggi</Text>
+              <Text style={styles.uploadBtnText}>fai foto</Text>
             )}
           </TouchableOpacity>
 
-          {photos.length > 0 ? (
+          {analyses.length > 0 ? (
             <View style={styles.listSection}>
-              <Text style={styles.listSectionTitle}>Tutte le foto</Text>
-              {photos.map((p) => (
-                <TouchableOpacity
-                  key={p.id}
-                  style={styles.listRow}
-                  onLongPress={() => handleDelete(p.id)}
-                >
-                  <Image source={{ uri: p.url }} style={styles.listThumb} resizeMode="cover" />
-                  <View style={styles.listMeta}>
-                    <Text style={styles.listDate}>{formatDate(p.taken_on)}</Text>
-                    <Text style={styles.listKg}>
-                      {p.weight_at_photo != null ? `${p.weight_at_photo} kg` : '—'}
-                    </Text>
-                  </View>
-                  <Text style={styles.listDeleteHint}>Tieni premuto per eliminare</Text>
-                </TouchableOpacity>
-              ))}
+              <Text style={styles.listSectionTitle}>Storia foto</Text>
+              <View style={styles.historyGrid}>
+                {analyses.map((analysis) => (
+                  <TouchableOpacity
+                    key={analysis.id}
+                    style={styles.historyCard}
+                    onPress={() => openDetail(analysis)}
+                    activeOpacity={0.9}
+                  >
+                    <Image
+                      source={{ uri: analysis.photo_url }}
+                      style={styles.historyImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.historyBody}>
+                      <Text style={styles.historyDate}>{formatDate(analysis.taken_on)}</Text>
+                      <Text style={styles.historyHint}>Apri analisi</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           ) : null}
         </View>

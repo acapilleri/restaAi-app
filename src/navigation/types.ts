@@ -1,3 +1,4 @@
+import type { BodyAnalysis } from '../api/bodyAnalysis';
 import type { SaluteMetricId } from '../services/appleHealth';
 
 export type ChatPromptSource =
@@ -17,6 +18,12 @@ export type ProfiloStackParamList = {
 export type SaluteStackParamList = {
   Salute: undefined;
   SaluteStorico: { metric: SaluteMetricId };
+};
+
+/** Foto corpo: overview + dettaglio analisi. */
+export type FotoStackParamList = {
+  FotoMain: undefined;
+  FotoDetail: { analysis: BodyAnalysis };
 };
 
 /** Stack della sezione Dieta (annidato in ProfiloStack). */

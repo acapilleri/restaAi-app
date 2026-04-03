@@ -11,9 +11,9 @@ import { HEALTHKIT_HISTORICAL_SYNC_STORAGE_KEY, syncHistoricalHealthData } from 
 import type { AppStackParamList } from './rootTypes';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ChatScreen } from '../screens/ChatScreen';
-import { FotoScreen } from '../screens/FotoScreen';
 import { ChatDemosScreen } from '../screens/ChatDemosScreen';
 import { DietaStackNavigator } from './DietaStackNavigator';
+import { FotoStackNavigator } from './FotoStackNavigator';
 import { ProfiloStackNavigator } from './ProfiloStackNavigator';
 import { SaluteStackNavigator } from './SaluteStackNavigator';
 import type { MainParamList } from './types';
@@ -23,6 +23,7 @@ const Drawer = createDrawerNavigator<MainParamList>();
 const DRAWER_ITEMS: { name: keyof MainParamList; label: string; ion: string }[] = [
   { name: 'Chat', label: 'chat', ion: 'chatbubble-ellipses' },
   { name: 'Dieta', label: 'dieta', ion: 'nutrition-outline' },
+  { name: 'Foto', label: 'foto', ion: 'camera-outline' },
   { name: 'Salute', label: 'salute', ion: 'heart-outline' },
   { name: 'Profilo', label: 'profilo', ion: 'person' },
 ];
@@ -152,28 +153,26 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.drawerRow}
-            onPress={() => {
+            onPress={async () => {
               hapticLight();
-              void (async () => {
-                if (Platform.OS !== 'ios') {
-                  Alert.alert('Solo iOS', 'Lo storico HealthKit è disponibile solo su iOS.');
-                  props.navigation.closeDrawer();
-                  return;
-                }
-                try {
-                  await AsyncStorage.removeItem(HEALTHKIT_HISTORICAL_SYNC_STORAGE_KEY);
-                  const ok = await syncHistoricalHealthData();
-                  if (ok) {
-                    await AsyncStorage.setItem(HEALTHKIT_HISTORICAL_SYNC_STORAGE_KEY, 'true');
-                    Alert.alert('Fatto', 'Storico HealthKit risincronizzato.');
-                  } else {
-                    Alert.alert('Errore', 'Impossibile completare la risincronizzazione.');
-                  }
-                } catch (e) {
+              if (Platform.OS !== 'ios') {
+                Alert.alert('Solo iOS', 'Lo storico HealthKit è disponibile solo su iOS.');
+                props.navigation.closeDrawer();
+                return;
+              }
+              try {
+                await AsyncStorage.removeItem(HEALTHKIT_HISTORICAL_SYNC_STORAGE_KEY);
+                const ok = await syncHistoricalHealthData();
+                if (ok) {
+                  await AsyncStorage.setItem(HEALTHKIT_HISTORICAL_SYNC_STORAGE_KEY, 'true');
+                  Alert.alert('Fatto', 'Storico HealthKit risincronizzato.');
+                } else {
                   Alert.alert('Errore', 'Impossibile completare la risincronizzazione.');
                 }
-                props.navigation.closeDrawer();
-              })();
+              } catch {
+                Alert.alert('Errore', 'Impossibile completare la risincronizzazione.');
+              }
+              props.navigation.closeDrawer();
             }}
             activeOpacity={0.85}
           >
@@ -215,7 +214,7 @@ export function MainDrawerNavigator() {
       <Drawer.Screen name="Dieta" component={DietaStackNavigator} />
       <Drawer.Screen name="ChatDemos" component={ChatDemosScreen} />
       <Drawer.Screen name="Today" component={HomeScreen} />
-      <Drawer.Screen name="Foto" component={FotoScreen} />
+      <Drawer.Screen name="Foto" component={FotoStackNavigator} />
       <Drawer.Screen name="Salute" component={SaluteStackNavigator} />
       <Drawer.Screen name="Profilo" component={ProfiloStackNavigator} />
     </Drawer.Navigator>
