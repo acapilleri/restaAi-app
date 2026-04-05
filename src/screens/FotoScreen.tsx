@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,23 +12,26 @@ import {
 // eslint-disable-next-line @react-native/no-deep-imports
 import Alert from 'react-native/Libraries/Alert/Alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { launchCamera } from 'react-native-image-picker';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
 import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
 import { getBodyAnalyses, uploadAndAnalyze } from '../api/bodyAnalysis';
 import type { BodyAnalysis } from '../api/bodyAnalysis';
 import type { FotoStackParamList } from '../navigation/types';
+import { formatBodyCheckDateTime } from '../utils/formatBodyCheckDateTime';
 
 function formatDate(s: string) {
-  try {
-    return new Date(s).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
-  } catch {
-    return s;
-  }
+  return formatBodyCheckDateTime(s, { month: 'short' });
 }
+
+const PHOTO_PICKER_OPTIONS = {
+  mediaType: 'photo' as const,
+  quality: 0.8,
+  selectionLimit: 1,
+};
 
 export function FotoScreen() {
   const { colors } = useTheme();
@@ -126,9 +129,11 @@ export function FotoScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const onRefresh = useCallback(() => {
     hapticLight();
@@ -144,33 +149,79 @@ export function FotoScreen() {
   );
 
   const handleAddPhoto = useCallback(() => {
-    launchCamera(
-      { mediaType: 'photo', quality: 0.8 },
-      async (res) => {
+    const processPickerResponse = async (res: {
+      errorCode?: string;
+      didCancel?: boolean;
+      assets?: Array<{
+        uri?: string;
+        fileName?: string | null;
+        type?: string | null;
+        android?: { uri?: string };
+      }>;
+    }) => {
+      if (res.errorCode) {
+        Alert.alert('Errore', 'Impossibile usare la foto scelta. Controlla i permessi e riprova.');
+        return;
+      }
+      if (res.didCancel || !res.assets?.[0]) return;
+      const asset = res.assets[0];
+      const uri = asset.uri ?? asset.android?.uri;
+      if (!uri) return;
+      setUploading(true);
+      try {
+        await uploadAndAnalyze({
+          uri,
+          type: asset.type,
+          fileName: asset.fileName,
+        });
+        await load();
+        Alert.alert('Analisi completata', 'Lettura salvata.');
+      } catch (e) {
+        Alert.alert('Errore', e instanceof Error ? e.message : 'Upload o analisi fallita. Riprova.');
+      } finally {
+        setUploading(false);
+      }
+    };
+
+    const openCamera = () => {
+      launchCamera(PHOTO_PICKER_OPTIONS, async (res) => {
         if (res.errorCode) {
+          if (res.errorCode === 'camera_unavailable') {
+            launchImageLibrary(PHOTO_PICKER_OPTIONS, (fallbackRes) => {
+              processPickerResponse(fallbackRes).catch(() => {});
+            });
+            return;
+          }
+          if (res.errorCode === 'permission') {
+            Alert.alert('Errore', 'Permesso fotocamera negato. Controlla i permessi e riprova.');
+            return;
+          }
           Alert.alert('Errore', 'Impossibile aprire la fotocamera. Controlla i permessi e riprova.');
           return;
         }
-        if (res.didCancel || !res.assets?.[0]) return;
-        const asset = res.assets[0];
-        const uri = asset.uri ?? asset.android?.uri;
-        if (!uri) return;
-        setUploading(true);
-        try {
-          await uploadAndAnalyze({
-            uri,
-            type: asset.type,
-            fileName: asset.fileName,
-          });
-          await load();
-          Alert.alert('Analisi completata', 'Lettura salvata.');
-        } catch (e) {
-          Alert.alert('Errore', e instanceof Error ? e.message : 'Upload o analisi fallita. Riprova.');
-        } finally {
-          setUploading(false);
+        await processPickerResponse(res);
+      });
+    };
+
+    const openLibrary = () => {
+      launchImageLibrary(PHOTO_PICKER_OPTIONS, async (res) => {
+        if (res.errorCode) {
+          if (res.errorCode === 'permission') {
+            Alert.alert('Errore', 'Permesso galleria negato. Controlla i permessi e riprova.');
+            return;
+          }
+          Alert.alert('Errore', 'Impossibile aprire la galleria. Controlla i permessi e riprova.');
+          return;
         }
-      },
-    );
+        await processPickerResponse(res);
+      });
+    };
+
+    Alert.alert('Nuovo Body Check', 'Scatta una foto o scegline una dalla galleria.', [
+      { text: 'Annulla', style: 'cancel' },
+      { text: 'Galleria', onPress: openLibrary },
+      { text: 'Fotocamera', onPress: openCamera },
+    ]);
   }, [load]);
 
   const latestAnalysis = analyses[0] ?? null;
@@ -187,8 +238,8 @@ export function FotoScreen() {
       >
         <View style={styles.pad}>
           <View style={styles.topRow}>
-            <Text style={[styles.title, styles.titleWithMenu]}>Foto corpo</Text>
-            <Text style={styles.months}>{analyses.length} foto</Text>
+            <Text style={[styles.title, styles.titleWithMenu]}>Body Check</Text>
+            <Text style={styles.months}>{analyses.length} body check</Text>
             <DrawerMenuButton placement="trailing" />
           </View>
 
@@ -211,15 +262,15 @@ export function FotoScreen() {
               />
               <View style={styles.latestBody}>
                 <Text style={styles.latestDate}>{formatDate(latestAnalysis.taken_on)}</Text>
-                <Text style={styles.latestTitle}>Ultima foto analizzata</Text>
+                <Text style={styles.latestTitle}>Ultimo Body Check</Text>
                 <Text style={styles.latestHint}>Tocca per vedere il dettaglio completo.</Text>
               </View>
             </TouchableOpacity>
           ) : (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Nessuna foto disponibile</Text>
+              <Text style={styles.emptyTitle}>Nessun Body Check disponibile</Text>
               <Text style={styles.emptyText}>
-                Fai una foto corpo per salvare lo storico e leggere l'analisi nella schermata di dettaglio.
+                Fai un Body Check per salvare lo storico e leggere l'analisi nella schermata di dettaglio.
               </Text>
             </View>
           )}
@@ -239,13 +290,13 @@ export function FotoScreen() {
             {uploading ? (
               <ActivityIndicator size="small" color={colors.textOnPrimary} />
             ) : (
-              <Text style={styles.uploadBtnText}>fai foto</Text>
+              <Text style={styles.uploadBtnText}>nuovo Body Check</Text>
             )}
           </TouchableOpacity>
 
           {analyses.length > 0 ? (
             <View style={styles.listSection}>
-              <Text style={styles.listSectionTitle}>Storia foto</Text>
+              <Text style={styles.listSectionTitle}>Storico Body Check</Text>
               <View style={styles.historyGrid}>
                 {analyses.map((analysis) => (
                   <TouchableOpacity

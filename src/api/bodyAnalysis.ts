@@ -1,12 +1,32 @@
 import client from './client';
+import {
+  getPresignedUploadUrl,
+  resolveUploadContentType,
+  resolveUploadFilename,
+  uploadToR2,
+  type PresignedUploadTarget,
+} from './r2Upload';
+export { uploadToR2 } from './r2Upload';
+
+export interface BodyAnalysisComparison {
+  comparison_summary: string;
+  progress_summary: string;
+  /** Valori tipici: miglioramento | stabile | peggioramento | non_determinabile */
+  progress_trend: string;
+}
 
 export interface BodyReading {
   posture_score: number;
   posture_notes: string;
   body_fat_estimate: string;
+  waist_to_hip_ratio_estimate: string;
+  waist_to_shoulder_ratio_estimate: string;
+  body_shape_note: string;
   muscle_distribution: string;
   strong_areas: string[];
   areas_to_improve: string[];
+  overall_progress_note: string;
+  suggested_focus: string;
   notes: string;
 }
 
@@ -15,6 +35,7 @@ export interface BodyAnalysis {
   taken_on: string;
   photo_url: string;
   readings: BodyReading;
+  comparison: BodyAnalysisComparison;
   ai_summary: string;
 }
 
@@ -33,11 +54,6 @@ export interface BodyAnalysisUploadAsset {
   fileName?: string | null;
   type?: string | null;
 }
-
-type PresignedUrlResponse = {
-  upload_url?: unknown;
-  public_url?: unknown;
-};
 
 function toSafeString(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -69,10 +85,25 @@ export function normalizeBodyReading(value: unknown): BodyReading {
     posture_score: toSafeNumber(raw.posture_score),
     posture_notes: toSafeString(raw.posture_notes),
     body_fat_estimate: toSafeString(raw.body_fat_estimate),
+    waist_to_hip_ratio_estimate: toSafeString(raw.waist_to_hip_ratio_estimate),
+    waist_to_shoulder_ratio_estimate: toSafeString(raw.waist_to_shoulder_ratio_estimate),
+    body_shape_note: toSafeString(raw.body_shape_note),
     muscle_distribution: toSafeString(raw.muscle_distribution),
     strong_areas: toStringArray(raw.strong_areas),
     areas_to_improve: toStringArray(raw.areas_to_improve),
+    overall_progress_note: toSafeString(raw.overall_progress_note),
+    suggested_focus: toSafeString(raw.suggested_focus),
     notes: toSafeString(raw.notes),
+  };
+}
+
+export function normalizeBodyComparison(value: unknown): BodyAnalysisComparison {
+  const raw = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const trend = toSafeString(raw.progress_trend).toLowerCase();
+  return {
+    comparison_summary: toSafeString(raw.comparison_summary),
+    progress_summary: toSafeString(raw.progress_summary),
+    progress_trend: trend || 'non_determinabile',
   };
 }
 
@@ -83,6 +114,7 @@ export function normalizeBodyAnalysis(value: unknown): BodyAnalysis {
     taken_on: toSafeString(raw.taken_on),
     photo_url: toSafeString(raw.photo_url),
     readings: normalizeBodyReading(raw.readings),
+    comparison: normalizeBodyComparison(raw.comparison),
     ai_summary: toSafeString(raw.ai_summary),
   };
 }
@@ -111,57 +143,25 @@ export function normalizeCompareBodyAnalysesResponse(value: unknown): BodyAnalys
 export async function getPresignedUrl(
   filename: string,
   contentType: string,
-): Promise<{ upload_url: string; public_url: string }> {
-  const res = await client.get<PresignedUrlResponse>('/body_analyses/presign', {
-    params: { filename, content_type: contentType },
-  });
-
-  const upload_url = toSafeString(res.data?.upload_url);
-  const public_url = toSafeString(res.data?.public_url);
-
-  if (!upload_url || !public_url) {
-    throw new Error('Presigned URL non valida');
-  }
-
-  return { upload_url, public_url };
+): Promise<PresignedUploadTarget> {
+  return getPresignedUploadUrl('/body_analyses/presign', filename, contentType);
 }
 
-export async function uploadToR2(
-  uploadUrl: string,
-  fileUri: string,
-  contentType: string,
-): Promise<void> {
-  const fileResponse = await fetch(fileUri);
-  if ('ok' in fileResponse && fileResponse.ok === false) {
-    throw new Error('Impossibile leggere il file selezionato');
-  }
-
-  const blob = await fileResponse.blob();
-  const uploadResponse = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': contentType },
-    body: blob,
-  });
-
-  if (!uploadResponse.ok) {
-    throw new Error(`Upload R2 fallito: ${uploadResponse.status}`);
-  }
-}
-
-export async function createBodyAnalysis(photoUrl: string, date?: string): Promise<BodyAnalysis> {
+export async function createBodyAnalysis(photoUrl: string, date?: string, r2Key?: string): Promise<BodyAnalysis> {
   const res = await client.post('/body_analyses', {
     photo_url: photoUrl,
+    r2_key: r2Key,
     date: date ?? new Date().toISOString().split('T')[0],
   });
   return normalizeBodyAnalysis(res.data);
 }
 
 export async function uploadAndAnalyze(asset: BodyAnalysisUploadAsset): Promise<BodyAnalysis> {
-  const filename = asset.fileName ?? 'photo.jpg';
-  const contentType = asset.type ?? 'image/jpeg';
-  const { upload_url, public_url } = await getPresignedUrl(filename, contentType);
+  const filename = resolveUploadFilename(asset.fileName, 'photo.jpg');
+  const contentType = resolveUploadContentType(asset.type);
+  const { upload_url, public_url, key } = await getPresignedUrl(filename, contentType);
   await uploadToR2(upload_url, asset.uri, contentType);
-  return createBodyAnalysis(public_url);
+  return createBodyAnalysis(public_url, undefined, key);
 }
 
 export async function getBodyAnalyses(): Promise<BodyAnalysis[]> {
@@ -174,4 +174,9 @@ export async function compareBodyAnalyses(ids: number[]): Promise<BodyAnalysesCo
     params: { ids },
   });
   return normalizeCompareBodyAnalysesResponse(res.data);
+}
+
+export async function deleteBodyAnalysis(id: number): Promise<{ message: string }> {
+  const res = await client.delete<{ message: string }>(`/body_analyses/${id}`);
+  return res.data;
 }

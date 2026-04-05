@@ -1,6 +1,7 @@
 import {
   compareBodyAnalyses,
   createBodyAnalysis,
+  deleteBodyAnalysis,
   getBodyAnalyses,
   getPresignedUrl,
   normalizeBodyAnalysis,
@@ -10,12 +11,14 @@ import {
 
 const mockGet = jest.fn();
 const mockPost = jest.fn();
+const mockDelete = jest.fn();
 
 jest.mock('../../src/api/client', () => ({
   __esModule: true,
   default: {
     get: (...args: unknown[]) => mockGet(...args),
     post: (...args: unknown[]) => mockPost(...args),
+    delete: (...args: unknown[]) => mockDelete(...args),
   },
 }));
 
@@ -36,12 +39,14 @@ describe('bodyAnalysis api adapter', () => {
       data: {
         upload_url: 'https://upload.example.test',
         public_url: 'https://cdn.example.test/body/1/photo.jpg',
+        key: 'body_analyses/1/photo.jpg',
       },
     });
 
     await expect(getPresignedUrl('photo.jpg', 'image/jpeg')).resolves.toEqual({
       upload_url: 'https://upload.example.test',
       public_url: 'https://cdn.example.test/body/1/photo.jpg',
+      key: 'body_analyses/1/photo.jpg',
     });
 
     expect(mockGet).toHaveBeenCalledWith('/body_analyses/presign', {
@@ -99,16 +104,27 @@ describe('bodyAnalysis api adapter', () => {
         posture_score: 8,
         posture_notes: '',
         body_fat_estimate: '15-20%',
+        waist_to_hip_ratio_estimate: '',
+        waist_to_shoulder_ratio_estimate: '',
+        body_shape_note: '',
         muscle_distribution: '',
         strong_areas: ['spalle'],
         areas_to_improve: [],
+        overall_progress_note: '',
+        suggested_focus: '',
         notes: '',
+      },
+      comparison: {
+        comparison_summary: '',
+        progress_summary: '',
+        progress_trend: 'non_determinabile',
       },
       ai_summary: 'Buon allineamento generale.',
     });
 
     expect(mockPost).toHaveBeenCalledWith('/body_analyses', {
       photo_url: 'https://cdn.example.test/body/1/photo.jpg',
+      r2_key: undefined,
       date: '2026-04-02',
     });
   });
@@ -201,6 +217,7 @@ describe('bodyAnalysis api adapter', () => {
       data: {
         upload_url: 'https://upload.example.test',
         public_url: 'https://cdn.example.test/body/1/photo.jpg',
+        key: 'body_analyses/1/photo.jpg',
       },
     });
     mockPost.mockResolvedValue({
@@ -227,12 +244,36 @@ describe('bodyAnalysis api adapter', () => {
         posture_score: 7,
         posture_notes: '',
         body_fat_estimate: '',
+        waist_to_hip_ratio_estimate: '',
+        waist_to_shoulder_ratio_estimate: '',
+        body_shape_note: '',
         muscle_distribution: '',
         strong_areas: [],
         areas_to_improve: [],
+        overall_progress_note: '',
+        suggested_focus: '',
         notes: 'Solida base.',
+      },
+      comparison: {
+        comparison_summary: '',
+        progress_summary: '',
+        progress_trend: 'non_determinabile',
       },
       ai_summary: 'Solida base.',
     });
+
+    expect(mockPost).toHaveBeenCalledWith('/body_analyses', {
+      photo_url: 'https://cdn.example.test/body/1/photo.jpg',
+      r2_key: 'body_analyses/1/photo.jpg',
+      date: expect.any(String),
+    });
+  });
+
+  it('deletes a body analysis by id', async () => {
+    mockDelete.mockResolvedValue({ data: { message: 'Eliminata.' } });
+
+    await expect(deleteBodyAnalysis(42)).resolves.toEqual({ message: 'Eliminata.' });
+
+    expect(mockDelete).toHaveBeenCalledWith('/body_analyses/42');
   });
 });

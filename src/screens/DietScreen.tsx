@@ -22,7 +22,13 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
 import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
-import { getDietPlans, createDietPlan, deleteDietPlan, reactivateDietPlan, scanDietPlan } from '../api/dietPlan';
+import {
+  getDietPlans,
+  createDietPlan,
+  deleteDietPlan,
+  reactivateDietPlan,
+  uploadDietPlanImageAndScan,
+} from '../api/dietPlan';
 import type { DietPlanRecord, DietPlanMeal } from '../api/dietPlan';
 import { getStoredLanguage, type AppLanguage } from '../api/authStorage';
 import { formatWeekday, getLocaleTag } from '../utils/locale';
@@ -348,13 +354,11 @@ export function DietScreen() {
         if (!uri) return;
         setScanning(true);
         try {
-          const formData = new FormData();
-          formData.append('image', {
+          const { text } = await uploadDietPlanImageAndScan({
             uri,
             type: asset.type ?? 'image/jpeg',
-            name: asset.fileName ?? 'diet.jpg',
-          } as unknown as Blob);
-          const { text } = await scanDietPlan(formData);
+            fileName: asset.fileName ?? 'diet.jpg',
+          });
           if (text) setUploadText((prev) => (prev ? `${prev}\n\n${text}` : text));
           else Alert.alert('Nessun testo', 'L\'AI non ha trovato testo nell\'immagine. Prova con una foto più nitida.');
         } catch (e) {

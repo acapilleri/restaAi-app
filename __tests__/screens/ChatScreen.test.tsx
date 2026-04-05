@@ -37,6 +37,7 @@ jest.mock('@react-navigation/native', () => {
 });
 
 const mockSendMessage = jest.fn();
+const mockDismissQuickChip = jest.fn();
 const mockConfirmChatAction = jest.fn();
 const mockRefreshLatestHistory = jest.fn();
 const mockLoadOlderHistory = jest.fn();
@@ -61,25 +62,33 @@ jest.mock('../../src/hooks/useProfileQuery', () => ({
 }));
 
 jest.mock('../../src/hooks/useChat', () => ({
-  useChat: () => ({
-    messages: [mockBaseMessage],
-    quickChips: mockQuickChips,
-    isTyping: false,
-    isSending: false,
-    isHistoryLoading: false,
-    isHistoryRefreshing: false,
-    isLoadingOlder: false,
-    hasMoreHistory: false,
-    loadLatestHistory: jest.fn(),
-    refreshLatestHistory: (...args: unknown[]) => mockRefreshLatestHistory(...args),
-    loadOlderHistory: (...args: unknown[]) => mockLoadOlderHistory(...args),
-    reactionUi: { pickerForId: null },
-    openReactionPicker: jest.fn(),
-    closeReactionPicker: jest.fn(),
-    setReaction: jest.fn(),
-    sendMessage: (...args: unknown[]) => mockSendMessage(...args),
-    confirmChatAction: (...args: unknown[]) => mockConfirmChatAction(...args),
-  }),
+  useChat: () => {
+    const React = require('react');
+    const [quickChips, setQuickChips] = React.useState<QuickChip[]>(mockQuickChips);
+    return {
+      messages: [mockBaseMessage],
+      quickChips,
+      isTyping: false,
+      isSending: false,
+      isHistoryLoading: false,
+      isHistoryRefreshing: false,
+      isLoadingOlder: false,
+      hasMoreHistory: false,
+      loadLatestHistory: jest.fn(),
+      refreshLatestHistory: (...args: unknown[]) => mockRefreshLatestHistory(...args),
+      loadOlderHistory: (...args: unknown[]) => mockLoadOlderHistory(...args),
+      reactionUi: { pickerForId: null },
+      openReactionPicker: jest.fn(),
+      closeReactionPicker: jest.fn(),
+      setReaction: jest.fn(),
+      sendMessage: (...args: unknown[]) => mockSendMessage(...args),
+      dismissQuickChip: (label: string) => {
+        mockDismissQuickChip(label);
+        setQuickChips((prev) => prev.filter((chip) => chip.label !== label));
+      },
+      confirmChatAction: (...args: unknown[]) => mockConfirmChatAction(...args),
+    };
+  },
 }));
 
 beforeEach(() => {
@@ -88,6 +97,7 @@ beforeEach(() => {
     { label: 'Registra peso', action: { type: 'message', text: 'Registra peso' } },
     { label: 'Alternative pranzo', action: { type: 'message', text: 'Alternative pranzo' } },
   ];
+  mockDismissQuickChip.mockClear();
 });
 
 describe('ChatScreen', () => {
@@ -224,6 +234,43 @@ describe('ChatScreen', () => {
       dietChipButton?.props.onPress();
     });
     expect(mockDrawerNav.navigate).toHaveBeenCalledWith('Dieta');
+    await ReactTestRenderer.act(async () => {
+      tree.unmount();
+    });
+  });
+
+  it('removes only the tapped message quick chip after sending', async () => {
+    let tree: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      tree = ReactTestRenderer.create(<ChatScreen />);
+    });
+
+    const touchables = tree.root.findAllByType(require('react-native').TouchableOpacity);
+    const weightChipButton = touchables.find((node) => {
+      const textNodes = node.findAllByType(require('react-native').Text);
+      return textNodes.some((t) => t.props.children === 'Registra peso');
+    });
+
+    expect(weightChipButton).toBeDefined();
+
+    await ReactTestRenderer.act(async () => {
+      weightChipButton?.props.onPress();
+    });
+
+    expect(mockDismissQuickChip).toHaveBeenCalledWith('Registra peso');
+    expect(mockSendMessage).toHaveBeenCalledWith('Registra peso');
+
+    const texts = tree.root.findAllByType(require('react-native').Text);
+    const content = texts
+      .map((t) => {
+        const c = t.props.children;
+        return Array.isArray(c) ? c.join('') : String(c ?? '');
+      })
+      .join(' ');
+
+    expect(content).not.toContain('Registra peso');
+    expect(content).toContain('Alternative pranzo');
+
     await ReactTestRenderer.act(async () => {
       tree.unmount();
     });

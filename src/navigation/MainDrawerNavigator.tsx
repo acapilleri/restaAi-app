@@ -23,7 +23,7 @@ const Drawer = createDrawerNavigator<MainParamList>();
 const DRAWER_ITEMS: { name: keyof MainParamList; label: string; ion: string }[] = [
   { name: 'Chat', label: 'chat', ion: 'chatbubble-ellipses' },
   { name: 'Dieta', label: 'dieta', ion: 'nutrition-outline' },
-  { name: 'Foto', label: 'foto', ion: 'camera-outline' },
+  { name: 'Foto', label: 'body check', ion: 'camera-outline' },
   { name: 'Salute', label: 'salute', ion: 'heart-outline' },
   { name: 'Profilo', label: 'profilo', ion: 'person' },
 ];

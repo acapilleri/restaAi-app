@@ -1,4 +1,12 @@
 import client from './client';
+import {
+  getPresignedUploadUrl,
+  resolveUploadContentType,
+  resolveUploadFilename,
+  uploadToR2,
+  type PresignedUploadTarget,
+  type R2UploadAsset,
+} from './r2Upload';
 
 export type DietPlanMeal = {
   name: string;
@@ -37,6 +45,8 @@ export type DietPlansResponse = {
   diet_plans: DietPlanRecord[];
 };
 
+export type DietPlanScanAsset = R2UploadAsset;
+
 export function getDietPlan(): Promise<DietPlanResponse> {
   return client.get<DietPlanResponse>('/diet_plan').then((r) => r.data);
 }
@@ -58,6 +68,37 @@ export function reactivateDietPlan(id: number): Promise<{ message: string; diet_
 }
 
 /** Invia un'immagine del piano dieta; l'AI estrae il testo. Body: FormData con chiave 'image' (file). */
-export function scanDietPlan(formData: FormData): Promise<{ text: string }> {
-  return client.post<{ text: string }>('/diet_plan/scan', formData).then((r) => r.data);
+export function getDietPlanPresignedUrl(
+  filename: string,
+  contentType: string,
+): Promise<PresignedUploadTarget> {
+  return getPresignedUploadUrl('/diet_plan/presign', filename, contentType);
+}
+
+/** Invia la URL pubblica o la chiave R2 dell'immagine del piano dieta; l'AI estrae il testo dal file gia' caricato. */
+export function scanDietPlan(imageUrl: string, r2Key?: string): Promise<{ text: string }> {
+  return client.post<{ text: string }>('/diet_plan/scan', { image_url: imageUrl, r2_key: r2Key }).then((r) => r.data);
+}
+
+function mapDietPlanScanError(error: unknown): Error {
+  const message = error instanceof Error ? error.message.trim() : '';
+  if (message === 'Network Error' || /timeout/i.test(message)) {
+    return new Error('Backend locale non raggiungibile. Verifica che Rails sia attivo e che l\'app punti all\'IP del Mac.');
+  }
+  if (message === 'Non trovato' || /404/.test(message)) {
+    return new Error('Endpoint scansione dieta non trovato sul backend attuale.');
+  }
+  return error instanceof Error ? error : new Error('Scansione dieta non riuscita');
+}
+
+export async function uploadDietPlanImageAndScan(asset: DietPlanScanAsset): Promise<{ text: string }> {
+  try {
+    const filename = resolveUploadFilename(asset.fileName, 'diet.jpg');
+    const contentType = resolveUploadContentType(asset.type);
+    const { upload_url, public_url, key } = await getDietPlanPresignedUrl(filename, contentType);
+    await uploadToR2(upload_url, asset.uri, contentType);
+    return scanDietPlan(public_url, key);
+  } catch (error) {
+    throw mapDietPlanScanError(error);
+  }
 }

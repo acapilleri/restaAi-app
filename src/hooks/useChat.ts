@@ -538,6 +538,12 @@ export function useChat() {
     [sendMutation],
   );
 
+  const dismissQuickChip = useCallback((label: string) => {
+    const normalized = label.trim();
+    if (!normalized) return;
+    setQuickChips((prev) => prev.filter((chip) => chip.label !== normalized));
+  }, []);
+
   const confirmChatAction = useCallback(async (payload: ConfirmChatPayload) => {
     try {
       await confirmChatActionApi(payload);
@@ -645,6 +651,7 @@ export function useChat() {
     hasMoreHistory,
     isSending: sendMutation.isPending,
     sendMessage: send,
+    dismissQuickChip,
     loadLatestHistory,
     refreshLatestHistory,
     loadOlderHistory,

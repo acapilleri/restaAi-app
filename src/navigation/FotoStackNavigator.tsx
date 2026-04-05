@@ -17,7 +17,7 @@ export function FotoStackNavigator() {
       <Stack.Screen
         name="FotoDetail"
         component={FotoDetailScreen}
-        options={{ title: 'Dettaglio foto' }}
+        options={{ title: 'Dettaglio Body Check' }}
       />
     </Stack.Navigator>
   );

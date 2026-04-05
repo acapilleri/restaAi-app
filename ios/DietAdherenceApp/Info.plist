@@ -48,6 +48,8 @@
 	<string>RestaAI può aggiornare Apple Salute quando registri una pesata dall’app.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Resta può usare la posizione quando in uso per funzioni che dipendono dal luogo (es. suggerimenti contestuali). Puoi negare l’accesso in qualsiasi momento.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>RestaAI usa la fotocamera per permetterti di scattare foto del corpo e analizzarle nell'app.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>RestaAI accede alla libreria foto per permetterti di selezionare immagini da caricare nell'app.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

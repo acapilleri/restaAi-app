@@ -43,6 +43,7 @@ export function ChatScreen() {
     loadOlderHistory,
     refreshLatestHistory,
     sendMessage,
+    dismissQuickChip,
     quickChips,
     confirmChatAction,
     reactionUi,
@@ -357,10 +358,12 @@ export function ChatScreen() {
                     return;
                   }
                   if (selected?.action?.type === 'message') {
+                    dismissQuickChip(chip);
                     sendMessage(selected.action.text);
                     scrollToLatest(true);
                     return;
                   }
+                  dismissQuickChip(chip);
                   sendMessage(chip);
                   scrollToLatest(true);
                 }}

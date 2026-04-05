@@ -7,7 +7,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { Text, TouchableOpacity } from 'react-native';
 // eslint-disable-next-line @react-native/no-deep-imports
 import Alert from 'react-native/Libraries/Alert/Alert';
-import { launchCamera } from 'react-native-image-picker';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { FotoScreen } from '../../src/screens/FotoScreen';
 
 const mockGetBodyAnalyses = jest.fn();
@@ -19,6 +19,12 @@ jest.mock('@react-navigation/native', () => {
   return {
     ...actual,
     useNavigation: () => ({ navigate: mockNavigate }),
+    useFocusEffect: (callback: () => void | (() => void)) => {
+      const { useEffect } = require('react');
+      useEffect(() => {
+        return callback();
+      }, []);
+    },
   };
 });
 
@@ -34,6 +40,12 @@ jest.mock('../../src/components/navigation/DrawerMenuButtonWithBadge', () => ({
 describe('FotoScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (Alert.alert as jest.Mock).mockImplementation(
+      (_title: unknown, _message: unknown, buttons?: Array<{ text: string; onPress?: () => void }>) => {
+        const camera = buttons?.find((b) => b.text === 'Fotocamera');
+        camera?.onPress?.();
+      },
+    );
   });
 
   it('renders latest photo summary without posture or body fat in the UI', async () => {
@@ -52,6 +64,11 @@ describe('FotoScreen', () => {
           notes: 'Continua cosi.',
         },
         ai_summary: 'Ottima simmetria generale.',
+        comparison: {
+          comparison_summary: '',
+          progress_summary: '',
+          progress_trend: 'non_determinabile',
+        },
       },
       {
         id: 1,
@@ -67,6 +84,11 @@ describe('FotoScreen', () => {
           notes: 'Buon punto di partenza.',
         },
         ai_summary: 'Prima lettura.',
+        comparison: {
+          comparison_summary: '',
+          progress_summary: '',
+          progress_trend: 'non_determinabile',
+        },
       },
     ]);
 
@@ -84,10 +106,10 @@ describe('FotoScreen', () => {
       })
       .join(' ');
 
-    expect(content).toContain('Foto corpo');
-    expect(content).toContain('2 foto');
+    expect(content).toContain('Body Check');
+    expect(content).toContain('2 body check');
     expect(content).toContain('Ottima simmetria generale.');
-    expect(content).toContain('Storia foto');
+    expect(content).toContain('Storico Body Check');
     expect(content).not.toContain('Postura');
     expect(content).not.toContain('Massa grassa');
 
@@ -112,6 +134,11 @@ describe('FotoScreen', () => {
         notes: '',
       },
       ai_summary: 'Nuova lettura completata.',
+      comparison: {
+        comparison_summary: '',
+        progress_summary: '',
+        progress_trend: 'non_determinabile',
+      },
     });
 
     (launchCamera as jest.Mock).mockImplementation(
@@ -136,13 +163,14 @@ describe('FotoScreen', () => {
 
     const uploadButton = tree.root.findAllByType(TouchableOpacity).find((node) => {
       const texts = node.findAllByType(Text);
-      return texts.some((textNode) => textNode.props.children === 'fai foto');
+      return texts.some((textNode) => textNode.props.children === 'nuovo Body Check');
     });
 
     expect(uploadButton).toBeDefined();
 
     await ReactTestRenderer.act(async () => {
       uploadButton?.props.onPress();
+      await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -176,6 +204,11 @@ describe('FotoScreen', () => {
           notes: 'Continua cosi.',
         },
         ai_summary: 'Ottima simmetria generale.',
+        comparison: {
+          comparison_summary: '',
+          progress_summary: '',
+          progress_trend: 'non_determinabile',
+        },
       },
     ]);
 
@@ -201,6 +234,153 @@ describe('FotoScreen', () => {
         id: 2,
         photo_url: 'https://cdn.example.test/body/1/latest.jpg',
       }),
+    });
+
+    await ReactTestRenderer.act(async () => {
+      tree.unmount();
+    });
+  });
+
+  it('uploads a photo chosen from the library', async () => {
+    (Alert.alert as jest.Mock).mockImplementation(
+      (_title: unknown, _message: unknown, buttons?: Array<{ text: string; onPress?: () => void }>) => {
+        const gallery = buttons?.find((b) => b.text === 'Galleria');
+        gallery?.onPress?.();
+      },
+    );
+
+    mockGetBodyAnalyses.mockResolvedValue([]);
+    mockUploadAndAnalyze.mockResolvedValue({
+      id: 3,
+      taken_on: '2026-04-10',
+      photo_url: 'https://cdn.example.test/body/1/uploaded.jpg',
+      readings: {
+        posture_score: 7,
+        posture_notes: '',
+        body_fat_estimate: '16-20%',
+        muscle_distribution: '',
+        strong_areas: [],
+        areas_to_improve: [],
+        notes: '',
+      },
+      ai_summary: 'Nuova lettura completata.',
+      comparison: {
+        comparison_summary: '',
+        progress_summary: '',
+        progress_trend: 'non_determinabile',
+      },
+    });
+
+    (launchImageLibrary as jest.Mock).mockImplementation(
+      (_options: unknown, callback: (response: unknown) => void) => {
+        callback({
+          assets: [
+            {
+              uri: 'file:///library-body.jpg',
+              fileName: 'library-body.jpg',
+              type: 'image/jpeg',
+            },
+          ],
+        });
+      },
+    );
+
+    let tree: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      tree = ReactTestRenderer.create(<FotoScreen />);
+      await Promise.resolve();
+    });
+
+    const uploadButton = tree.root.findAllByType(TouchableOpacity).find((node) => {
+      const texts = node.findAllByType(Text);
+      return texts.some((textNode) => textNode.props.children === 'nuovo Body Check');
+    });
+
+    await ReactTestRenderer.act(async () => {
+      uploadButton?.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(launchImageLibrary).toHaveBeenCalled();
+    expect(launchCamera).not.toHaveBeenCalled();
+    expect(mockUploadAndAnalyze).toHaveBeenCalledWith({
+      uri: 'file:///library-body.jpg',
+      fileName: 'library-body.jpg',
+      type: 'image/jpeg',
+    });
+
+    await ReactTestRenderer.act(async () => {
+      tree.unmount();
+    });
+  });
+
+  it('falls back to photo library when camera is unavailable', async () => {
+    mockGetBodyAnalyses.mockResolvedValue([]);
+    mockUploadAndAnalyze.mockResolvedValue({
+      id: 3,
+      taken_on: '2026-04-10',
+      photo_url: 'https://cdn.example.test/body/1/uploaded.jpg',
+      readings: {
+        posture_score: 7,
+        posture_notes: '',
+        body_fat_estimate: '16-20%',
+        muscle_distribution: '',
+        strong_areas: [],
+        areas_to_improve: [],
+        notes: '',
+      },
+      ai_summary: 'Nuova lettura completata.',
+      comparison: {
+        comparison_summary: '',
+        progress_summary: '',
+        progress_trend: 'non_determinabile',
+      },
+    });
+
+    (launchCamera as jest.Mock).mockImplementation(
+      (_options: unknown, callback: (response: unknown) => void) => {
+        callback({ errorCode: 'camera_unavailable' });
+      },
+    );
+    (launchImageLibrary as jest.Mock).mockImplementation(
+      (_options: unknown, callback: (response: unknown) => void) => {
+        callback({
+          assets: [
+            {
+              uri: 'file:///fallback-body.jpg',
+              fileName: 'fallback-body.jpg',
+              type: 'image/jpeg',
+            },
+          ],
+        });
+      },
+    );
+
+    let tree: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      tree = ReactTestRenderer.create(<FotoScreen />);
+      await Promise.resolve();
+    });
+
+    const uploadButton = tree.root.findAllByType(TouchableOpacity).find((node) => {
+      const texts = node.findAllByType(Text);
+      return texts.some((textNode) => textNode.props.children === 'nuovo Body Check');
+    });
+
+    await ReactTestRenderer.act(async () => {
+      uploadButton?.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(launchImageLibrary).toHaveBeenCalled();
+    expect(mockUploadAndAnalyze).toHaveBeenCalledWith({
+      uri: 'file:///fallback-body.jpg',
+      fileName: 'fallback-body.jpg',
+      type: 'image/jpeg',
     });
 
     await ReactTestRenderer.act(async () => {

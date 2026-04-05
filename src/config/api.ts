@@ -1,30 +1,57 @@
-import { Alert, Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 /**
  * DietaAI API — base URL e flag di ambiente.
  * JWT: 7 giorni. Salvataggio in storage con chiave "dietaai_jwt".
  *
  * In dev, senza override:
- * - iOS simulator → http://localhost:3000
- * - Android emulator → http://10.0.2.2:3000
- * Su dispositivo fisico imposta DEV_API_HOST_OVERRIDE all'IP LAN del Mac (es. http://192.168.1.10:3000).
- * Default dev: Heroku (REMOTE_API_HOST). Imposta `null` per usare locale.
+ * - device fisico / Metro remoto -> IP del Mac derivato da Metro, porta 3000
+ * - iOS simulator -> http://localhost:3000
+ * - Android emulator -> http://10.0.2.2:3000
+ * Se serve, imposta DEV_API_HOST_OVERRIDE a una base URL esplicita.
  */
 
 const DEVELOPMENT = __DEV__ === true;
 /** Backend produzione (Heroku); stesso valore usato in release. */
 const REMOTE_API_HOST = 'https://resta-ai-6bf7dd4ee671.herokuapp.com';
-const DEV_API_HOST = 'http://localhost:3000';
-/** Override host dev; `REMOTE_API_HOST` = Heroku in dev. `null` = localhost/10.0.2.2 */
-const DEV_API_HOST_OVERRIDE: string | null = REMOTE_API_HOST;
+/** Override host dev; `null` = auto-detect da Metro o fallback simulatore/emulatore. */
+const DEV_API_HOST_OVERRIDE: string | null = null;
+
+function normalizeBaseUrl(value: string | null | undefined): string | null {
+  const normalized = typeof value === 'string' ? value.trim().replace(/\/+$/, '') : '';
+  return normalized || null;
+}
+
+function detectMetroHost(): string | null {
+  const scriptURL =
+    typeof NativeModules.SourceCode?.scriptURL === 'string' ? NativeModules.SourceCode.scriptURL : '';
+  if (!scriptURL) return null;
+
+  try {
+    const host = new URL(scriptURL).hostname.trim();
+    if (!host || host === 'localhost' || host === '127.0.0.1') {
+      return null;
+    }
+    return host;
+  } catch {
+    return null;
+  }
+}
+
 function defaultDevBaseUrl(): string {
+  const metroHost = detectMetroHost();
+  if (metroHost) {
+    return `http://${metroHost}:3000`;
+  }
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:3000';
   }
   return 'http://localhost:3000';
 }
 
-export const BASE_URL = DEVELOPMENT ? DEV_API_HOST : REMOTE_API_HOST;
+export const BASE_URL = DEVELOPMENT
+  ? normalizeBaseUrl(DEV_API_HOST_OVERRIDE) ?? defaultDevBaseUrl()
+  : REMOTE_API_HOST;
 
 export const API_BASE = `${BASE_URL}/api/v1`;
 
