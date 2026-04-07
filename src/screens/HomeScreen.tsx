@@ -29,6 +29,8 @@ import type { AppColors } from '../theme/colors';
 import { useTheme } from '../context/ThemeContext';
 import { hapticLight } from '../utils/haptics';
 import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
+import { SensorPolling } from '../components/SensorPolling';
+import { useSensorFusion } from '../context/SensorFusionContext';
 
 const DAY_NAMES_IT = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
 const MEAL_LABELS = ['colazione', 'pranzo', 'spuntino', 'cena'];
@@ -140,6 +142,7 @@ function formatDate(s: string) {
 
 export function HomeScreen() {
   const { user, token, refreshUser } = useAuth();
+  const llm = useSensorFusion();
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const scale = width / MOCKUP_WIDTH;
@@ -245,6 +248,7 @@ export function HomeScreen() {
   if (loading && !dashboard) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <SensorPolling />
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -254,6 +258,7 @@ export function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <SensorPolling />
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -262,6 +267,25 @@ export function HomeScreen() {
         }
       >
         <View style={styles.pad}>
+          {llm && !llm.isReady && llm.downloadProgress > 0 ? (
+            <View
+              style={{
+                padding: 16,
+                marginBottom: 12,
+                backgroundColor: colors.bgCard,
+                borderRadius: 12,
+                borderWidth: 0.5,
+                borderColor: colors.border,
+              }}
+            >
+              <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
+                Download AI locale: {Math.round(llm.downloadProgress * 100)}%
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 6 }}>
+                ~800 MB · consigliato su WiFi · una tantum
+              </Text>
+            </View>
+          ) : null}
           {error ? (
             <View>
               <Text style={styles.errorText}>{error}</Text>

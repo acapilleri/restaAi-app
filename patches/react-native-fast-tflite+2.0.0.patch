@@ -1,0 +1,65 @@
+diff --git a/node_modules/react-native-fast-tflite/src/TensorflowLite.ts b/node_modules/react-native-fast-tflite/src/TensorflowLite.ts
+index 967f46e..d390a25 100644
+--- a/node_modules/react-native-fast-tflite/src/TensorflowLite.ts
++++ b/node_modules/react-native-fast-tflite/src/TensorflowLite.ts
+@@ -26,12 +26,42 @@ declare global {
+   ) => Promise<TensorflowModel>
+ }
+ // Installs the JSI bindings into the global namespace.
+-console.log('Installing bindings...')
+-const result = TensorflowModule.install() as boolean
+-if (result !== true)
+-  console.error('Failed to install Tensorflow Lite bindings!')
++// On iOS, `RCTCxxBridge.runtime` is often null on the first synchronous import (New Arch / timing).
++// The upstream one-shot install then fails forever; we retry until the runtime is ready.
++const MAX_INSTALL_ATTEMPTS = 80
++const INSTALL_RETRY_MS = 50
+ 
+-console.log('Successfully installed!')
++let bindingsReady = false
++let bindingsPromise: Promise<void> | null = null
++
++function ensureTensorflowBindings(): Promise<void> {
++  if (bindingsReady) return Promise.resolve()
++  if (bindingsPromise) return bindingsPromise
++
++  bindingsPromise = new Promise((resolve, reject) => {
++    let attempts = 0
++    const tick = () => {
++      const result = TensorflowModule.install() as boolean
++      if (result === true) {
++        bindingsReady = true
++        console.log('Successfully installed!')
++        resolve()
++        return
++      }
++      attempts += 1
++      if (attempts >= MAX_INSTALL_ATTEMPTS) {
++        console.error('Failed to install Tensorflow Lite bindings!')
++        bindingsPromise = null
++        reject(new Error('Failed to install Tensorflow Lite bindings'))
++        return
++      }
++      setTimeout(tick, INSTALL_RETRY_MS)
++    }
++    console.log('Installing bindings...')
++    setTimeout(tick, 0)
++  })
++  return bindingsPromise
++}
+ 
+ export type TensorflowModelDelegate =
+   | 'default'
+@@ -122,10 +152,11 @@ export type TensorflowPlugin =
+  * @param delegate The delegate to use for computations. Uses the standard CPU delegate per default. The `core-ml` or `metal` delegates are GPU-accelerated, but don't work on every model.
+  * @returns The loaded Model.
+  */
+-export function loadTensorflowModel(
++export async function loadTensorflowModel(
+   source: ModelSource,
+   delegate: TensorflowModelDelegate = 'default'
+ ): Promise<TensorflowModel> {
++  await ensureTensorflowBindings()
+   let uri: string
+   if (typeof source === 'number') {
+     console.log(`Loading Tensorflow Lite Model ${source}`)

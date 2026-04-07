@@ -42,6 +42,8 @@ export type MainParamList = {
       }
     | undefined;
   ChatDemos: undefined;
+  LocalChat: undefined;
+  LocalAISensors: undefined;
   Dieta: undefined;
   Today: undefined;
   Foto: undefined;

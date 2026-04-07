@@ -12,6 +12,8 @@ import type { AppStackParamList } from './rootTypes';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ChatScreen } from '../screens/ChatScreen';
 import { ChatDemosScreen } from '../screens/ChatDemosScreen';
+import { LocalChat } from '../screens/LocalChat';
+import { LocalAISensorsScreen } from '../screens/LocalAISensorsScreen';
 import { DietaStackNavigator } from './DietaStackNavigator';
 import { FotoStackNavigator } from './FotoStackNavigator';
 import { ProfiloStackNavigator } from './ProfiloStackNavigator';
@@ -22,6 +24,8 @@ const Drawer = createDrawerNavigator<MainParamList>();
 
 const DRAWER_ITEMS: { name: keyof MainParamList; label: string; ion: string }[] = [
   { name: 'Chat', label: 'chat', ion: 'chatbubble-ellipses' },
+  { name: 'LocalChat', label: 'AI locale', ion: 'hardware-chip-outline' },
+  { name: 'LocalAISensors', label: 'sensori', ion: 'pulse-outline' },
   { name: 'Dieta', label: 'dieta', ion: 'nutrition-outline' },
   { name: 'Foto', label: 'body check', ion: 'camera-outline' },
   { name: 'Salute', label: 'salute', ion: 'heart-outline' },
@@ -211,6 +215,12 @@ export function MainDrawerNavigator() {
       }}
     >
       <Drawer.Screen name="Chat" component={ChatScreen} />
+      <Drawer.Screen
+        name="LocalChat"
+        component={LocalChat}
+        options={{ title: 'AI locale', drawerLabel: 'AI locale' }}
+      />
+      <Drawer.Screen name="LocalAISensors" component={LocalAISensorsScreen} />
       <Drawer.Screen name="Dieta" component={DietaStackNavigator} />
       <Drawer.Screen name="ChatDemos" component={ChatDemosScreen} />
       <Drawer.Screen name="Today" component={HomeScreen} />

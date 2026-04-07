@@ -48,6 +48,14 @@
 	<string>RestaAI può aggiornare Apple Salute quando registri una pesata dall’app.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Resta può usare la posizione quando in uso per funzioni che dipendono dal luogo (es. suggerimenti contestuali). Puoi negare l’accesso in qualsiasi momento.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Resta usa il Bluetooth per contesto aggregato (es. auto, cuffie) utile al coaching nutrizionale, senza tracciare la tua posizione.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Resta può leggere i prossimi eventi del calendario per adattare i suggerimenti quando sei in riunione o occupato.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Resta rileva solo il livello sonoro ambientale in modo breve per contestualizzare il coaching (nessuna registrazione di conversazioni).</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Resta usa accelerometro, giroscopio e barometro per stimare attività e contesto fisico in modo aggregato.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>RestaAI usa la fotocamera per permetterti di scattare foto del corpo e analizzarle nell'app.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

@@ -86,6 +86,14 @@ jest.mock('../../src/api/weights', () => ({
   createWeight: jest.fn(),
 }));
 
+jest.mock('../../src/context/SensorFusionContext', () => ({
+  useSensorFusion: () => null,
+}));
+
+jest.mock('../../src/components/SensorPolling', () => ({
+  SensorPolling: () => null,
+}));
+
 function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {

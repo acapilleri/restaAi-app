@@ -1,0 +1,145 @@
+[NitroModules] 🔥 ReactNativeHealthkit is boosted by nitro!
+RNFBApp: Using user specified Firebase SDK version '11.6.0'
+RNFBApp: Using overridden static_framework value of 'true'
+RNFBMessaging: Using user specified Firebase SDK version '11.6.0'
+RNFBMessaging: Using overridden static_framework value of 'true'
+[TFLite] CoreML Delegate is set to false! ($EnableCoreMLDelegate setting in Podfile)
+[NitroModules] 🔥 Your app is boosted by nitro modules!
+[NitroModules] Found react-native 0.84.1 (84) in /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native!
+Found 24 modules for target `DietAdherenceApp`
+link_native_modules! {ios_packages: [{configurations: [], name: "@dr.pogodin/react-native-fs", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/@dr.pogodin/react-native-fs", path: "../node_modules/@dr.pogodin/react-native-fs", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/@dr.pogodin/react-native-fs/ReactNativeFs.podspec", script_phases: []}, {configurations: [], name: "@kesha-antonov/react-native-background-downloader", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/@kesha-antonov/react-native-background-downloader", path: "../node_modules/@kesha-antonov/react-native-background-downloader", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/@kesha-antonov/react-native-background-downloader/react-native-background-downloader.podspec", script_phases: []}, {configurations: [], name: "@kingstinct/react-native-healthkit", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/@kingstinct/react-native-healthkit", path: "../node_modules/@kingstinct/react-native-healthkit", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/@kingstinct/react-native-healthkit/ReactNativeHealthkit.podspec", script_phases: []}, {configurations: [], name: "@react-native-async-storage/async-storage", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/@react-native-async-storage/async-storage", path: "../node_modules/@react-native-async-storage/async-storage", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/@react-native-async-storage/async-storage/AsyncStorage.podspec", script_phases: []}, {configurations: [], name: "@react-native-firebase/app", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/@react-native-firebase/app", path: "../node_modules/@react-native-firebase/app", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/@react-native-firebase/app/RNFBApp.podspec", script_phases: [{"name" => "[RNFB] Core Configuration", "path" => "./ios_config.sh", "execution_position" => "after_compile", "input_files" => ["$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)"]}]}, {configurations: [], name: "@react-native-firebase/messaging", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/@react-native-firebase/messaging", path: "../node_modules/@react-native-firebase/messaging", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/@react-native-firebase/messaging/RNFBMessaging.podspec", script_phases: []}, {configurations: [], name: "llama.rn", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/llama.rn", path: "../node_modules/llama.rn", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/llama.rn/llama-rn.podspec", script_phases: []}, {configurations: [], name: "react-native-ble-plx", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-ble-plx", path: "../node_modules/react-native-ble-plx", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-ble-plx/react-native-ble-plx.podspec", script_phases: []}, {configurations: [], name: "react-native-calendar-events", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-calendar-events", path: "../node_modules/react-native-calendar-events", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-calendar-events/RNCalendarEvents.podspec", script_phases: []}, {configurations: [], name: "react-native-device-info", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-device-info", path: "../node_modules/react-native-device-info", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-device-info/RNDeviceInfo.podspec", script_phases: []}, {configurations: [], name: "react-native-executorch", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-executorch", path: "../node_modules/react-native-executorch", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-executorch/react-native-executorch.podspec", script_phases: []}, {configurations: [], name: "react-native-fast-tflite", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-fast-tflite", path: "../node_modules/react-native-fast-tflite", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-fast-tflite/react-native-fast-tflite.podspec", script_phases: []}, {configurations: [], name: "react-native-geolocation-service", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-geolocation-service", path: "../node_modules/react-native-geolocation-service", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-geolocation-service/react-native-geolocation-service.podspec", script_phases: []}, {configurations: [], name: "react-native-gesture-handler", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-gesture-handler", path: "../node_modules/react-native-gesture-handler", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-gesture-handler/RNGestureHandler.podspec", script_phases: []}, {configurations: [], name: "react-native-haptic-feedback", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-haptic-feedback", path: "../node_modules/react-native-haptic-feedback", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-haptic-feedback/RNReactNativeHapticFeedback.podspec", script_phases: []}, {configurations: [], name: "react-native-image-picker", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-image-picker", path: "../node_modules/react-native-image-picker", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-image-picker/react-native-image-picker.podspec", script_phases: []}, {configurations: [], name: "react-native-nitro-modules", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-nitro-modules", path: "../node_modules/react-native-nitro-modules", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-nitro-modules/NitroModules.podspec", script_phases: []}, {configurations: [], name: "react-native-permissions", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-permissions", path: "../node_modules/react-native-permissions", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-permissions/RNPermissions.podspec", script_phases: []}, {configurations: [], name: "react-native-reanimated", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-reanimated", path: "../node_modules/react-native-reanimated", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-reanimated/RNReanimated.podspec", script_phases: []}, {configurations: [], name: "react-native-safe-area-context", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-safe-area-context", path: "../node_modules/react-native-safe-area-context", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-safe-area-context/react-native-safe-area-context.podspec", script_phases: []}, {configurations: [], name: "react-native-screens", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-screens", path: "../node_modules/react-native-screens", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-screens/RNScreens.podspec", script_phases: []}, {configurations: [], name: "react-native-sensors", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-sensors", path: "../node_modules/react-native-sensors", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-sensors/RNSensors.podspec", script_phases: []}, {configurations: [], name: "react-native-vector-icons", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-vector-icons", path: "../node_modules/react-native-vector-icons", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-vector-icons/RNVectorIcons.podspec", script_phases: []}, {configurations: [], name: "react-native-worklets", root: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-worklets", path: "../node_modules/react-native-worklets", podspec_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native-worklets/RNWorklets.podspec", script_phases: []}], ios_project_root_path: "/Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios", react_native_path: "../node_modules/react-native"}
+[NitroModules] 🔥 ReactNativeHealthkit is boosted by nitro!
+RNFBApp: Using user specified Firebase SDK version '11.6.0'
+RNFBApp: Using overridden static_framework value of 'true'
+Adding a custom script phase for Pod RNFBApp: [RNFB] Core Configuration
+RNFBMessaging: Using user specified Firebase SDK version '11.6.0'
+RNFBMessaging: Using overridden static_framework value of 'true'
+[TFLite] CoreML Delegate is set to false! ($EnableCoreMLDelegate setting in Podfile)
+[NitroModules] 🔥 Your app is boosted by nitro modules!
+[NitroModules] Found react-native 0.84.1 (84) in /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/node_modules/react-native!
+Auto-linking React Native modules for target `DietAdherenceApp`: AsyncStorage, NitroModules, RNCalendarEvents, RNDeviceInfo, RNFBApp, RNFBMessaging, RNGestureHandler, RNPermissions, RNReactNativeHapticFeedback, RNReanimated, RNScreens, RNSensors, RNVectorIcons, RNWorklets, ReactNativeFs, ReactNativeHealthkit, llama-rn, react-native-background-downloader, react-native-ble-plx, react-native-executorch, react-native-fast-tflite, react-native-geolocation-service, react-native-image-picker, and react-native-safe-area-context
+Framework build type is static library
+[ReactNativeDependencies] Setting up ReactNativeDependencies...
+[ReactNativeDependencies] Building from source: false
+[ReactNativeDependencies] Using tarball from URL: https://repo1.maven.org/maven2/com/facebook/react/react-native-artifacts/0.84.1/react-native-artifacts-0.84.1-reactnative-dependencies-debug.tar.gz
+[ReactNativeDependencies] Source: {http: "file:///Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/Pods/ReactNativeDependencies-artifacts/reactnative-dependencies-0.84.1-debug.tar.gz"}
+[ReactNativeCore] Setting up ReactNativeCore...
+[ReactNativeCore] Building from source: false
+Configuring the target with the New Architecture
+[ReactNativeCore] Using React Native Core and React Native Dependencies prebuilt versions.
+[36m[1m[Codegen][0m Analyzing /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/package.json[0m
+[36m[1m[Codegen][0m [33mSearching for codegen-enabled libraries in the app.[0m
+[36m[1m[Codegen][0m [33mThe "codegenConfig" field is not defined in package.json. Assuming there is nothing to generate at the app level.[0m
+[36m[1m[Codegen][0m [33mSearching for codegen-enabled libraries in react-native.config.js[0m
+[36m[1m[Codegen][0m Found @dr.pogodin/react-native-fs[0m
+[36m[1m[Codegen][0m Found @kesha-antonov/react-native-background-downloader[0m
+[36m[1m[Codegen][0m Found @react-native-async-storage/async-storage[0m
+[36m[1m[Codegen][0m Found llama.rn[0m
+[36m[1m[Codegen][0m Found react-native-executorch[0m
+[36m[1m[Codegen][0m Found react-native-fast-tflite[0m
+[36m[1m[Codegen][0m Found react-native-gesture-handler[0m
+[36m[1m[Codegen][0m Found react-native-haptic-feedback[0m
+[36m[1m[Codegen][0m Found react-native-image-picker[0m
+[36m[1m[Codegen][0m Found react-native-nitro-modules[0m
+[36m[1m[Codegen][0m Found react-native-permissions[0m
+[36m[1m[Codegen][0m Found react-native-reanimated[0m
+[36m[1m[Codegen][0m Found react-native-safe-area-context[0m
+[36m[1m[Codegen][0m Found react-native-screens[0m
+[36m[1m[Codegen][0m Found react-native-vector-icons[0m
+[36m[1m[Codegen][0m Found react-native-worklets[0m
+[36m[1m[Codegen][0m Processing ReactNativeFsSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos for ReactNativeFsSpec[0m
+[36m[1m[Codegen][0m Processing RNBackgroundDownloaderSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios for RNBackgroundDownloaderSpec[0m
+[36m[1m[Codegen][0m Processing AsyncStorageSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, visionos for AsyncStorageSpec[0m
+[36m[1m[Codegen][0m Processing RNLlamaSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, tvos for RNLlamaSpec[0m
+[36m[1m[Codegen][0m Processing RnExecutorchSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios for RnExecutorchSpec[0m
+[36m[1m[Codegen][0m Processing RNTfliteSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios for RNTfliteSpec[0m
+[36m[1m[Codegen][0m Processing rngesturehandler_codegen[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos, visionos for rngesturehandler_codegen[0m
+[36m[1m[Codegen][0m Processing RNHapticFeedbackSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios for RNHapticFeedbackSpec[0m
+[36m[1m[Codegen][0m Processing RNImagePickerSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios for RNImagePickerSpec[0m
+[36m[1m[Codegen][0m Processing NitroModulesSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Processing RNPermissionsSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, tvos for RNPermissionsSpec[0m
+[36m[1m[Codegen][0m Processing rnreanimated[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos, visionos for rnreanimated[0m
+[36m[1m[Codegen][0m Processing safeareacontext[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos, visionos for safeareacontext[0m
+[36m[1m[Codegen][0m Processing rnscreens[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, tvos, visionos for rnscreens[0m
+[36m[1m[Codegen][0m Processing RNVectorIconsSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, tvos, visionos for RNVectorIconsSpec[0m
+[36m[1m[Codegen][0m Processing rnworklets[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos, visionos for rnworklets[0m
+[36m[1m[Codegen][0m Generating Native Code for ReactNativeFsSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for RNBackgroundDownloaderSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for AsyncStorageSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for RNLlamaSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for RnExecutorchSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for RNTfliteSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for rngesturehandler_codegen - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for RNHapticFeedbackSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for RNImagePickerSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for NitroModulesSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for RNPermissionsSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for rnreanimated - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for safeareacontext - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for rnscreens - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for RNVectorIconsSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating Native Code for rnworklets - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen[0m
+[36m[1m[Codegen][0m Generating RCTThirdPartyComponentsProvider.h[0m
+[36m[1m[Codegen][0m Generated artifact: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen/RCTThirdPartyComponentsProvider.h[0m
+[36m[1m[Codegen][0m Generating RCTThirdPartyComponentsProvider.mm[0m
+[36m[1m[Codegen][0m Generated artifact: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen/RCTThirdPartyComponentsProvider.mm[0m
+[36m[1m[Codegen][0m Generating RCTModulesProvider.h[0m
+[36m[1m[Codegen][0m Generated artifact: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen/RCTModuleProviders.h[0m
+[36m[1m[Codegen][0m Generating RCTModuleProviders.mm[0m
+[36m[1m[Codegen][0m Generated artifact: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen/RCTModuleProviders.mm[0m
+[36m[1m[Codegen][0m Generating RCTAppDependencyProvider[0m
+[36m[1m[Codegen][0m Generated artifact: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactAppDependencyProvider/RCTAppDependencyProvider.h[0m
+[36m[1m[Codegen][0m Generated artifact: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactAppDependencyProvider/RCTAppDependencyProvider.mm[0m
+[36m[1m[Codegen][0m Generated podspec: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactAppDependencyProvider/ReactAppDependencyProvider.podspec[0m
+[36m[1m[Codegen][0m Generated podspec: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/ReactCodegen/ReactCodegen.podspec[0m
+[36m[1m[Codegen][0m Generating Package.swift[0m
+[36m[1m[Codegen][0m Generated artifact: /Users/resca/Documents/Projects/MyApp/diet_agent_cursor/DietAdherenceApp/ios/build/generated/ios/Package.swift[0m
+[36m[1m[Codegen][0m [33mDone.[0m
+Updating local specs repositories

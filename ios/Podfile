@@ -13,6 +13,11 @@ node_require('react-native-permissions/scripts/setup.rb')
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
+# react-native-fast-tflite: needed for delegate `core-ml` (YAMNet in SensorBundleService).
+$EnableCoreMLDelegate = true
+
+ENV['RCT_NEW_ARCH_ENABLED'] = '1'
+
 # Firebase iOS SDK: pin when local CocoaPods specs lag behind @react-native-firebase (see RNFB Podfile $FirebaseSDKVersion).
 $RNFirebaseAsStaticFramework = true
 $FirebaseSDKVersion = '11.6.0'

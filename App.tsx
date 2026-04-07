@@ -11,9 +11,28 @@ import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { PROFILE_QUERY_KEY } from './src/api/profile';
 import { AuthProvider } from './src/context/AuthContext';
+import { SensorFusionProvider } from './src/context/SensorFusionContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { subscribeForegroundMessages, subscribeTokenRefresh } from './src/services/pushMessaging';
+import { setConfig as setBackgroundDownloaderConfig } from '@kesha-antonov/react-native-background-downloader';
+import { initExecutorch } from 'react-native-executorch';
+import { BareResourceFetcher } from 'react-native-executorch-bare-resource-fetcher';
+
+if (__DEV__) {
+  try {
+    setBackgroundDownloaderConfig({
+      isLogsEnabled: true,
+      logCallback: (tag, message, ...args) => {
+        console.log('[BackgroundDownloader]', tag, message, ...args);
+      },
+    });
+  } catch (e) {
+    console.warn('[BackgroundDownloader] setConfig non applicato (nativo non pronto?)', e);
+  }
+}
+
+initExecutorch({ resourceFetcher: BareResourceFetcher });
 
 const queryClient = new QueryClient();
 
@@ -103,11 +122,13 @@ function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <QueryClientProvider client={queryClient}>
-            <AppWithNavigationTheme />
-          </QueryClientProvider>
-        </ThemeProvider>
+        <SensorFusionProvider>
+          <ThemeProvider>
+            <QueryClientProvider client={queryClient}>
+              <AppWithNavigationTheme />
+            </QueryClientProvider>
+          </ThemeProvider>
+        </SensorFusionProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
