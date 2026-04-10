@@ -142,6 +142,8 @@ PODS:
   - RCTSwiftUI (0.84.1)
   - RCTSwiftUIWrapper (0.84.1):
     - RCTSwiftUI
+  - RCTSystemSetting (1.7.6):
+    - React
   - RCTTypeSafety (0.84.1):
     - FBLazyVector (= 0.84.1)
     - RCTRequired (= 0.84.1)
@@ -2151,6 +2153,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNAudioRecord (0.2.2):
+    - React
   - RNCalendarEvents (2.2.0):
     - React
   - RNDeviceInfo (15.0.2):
@@ -2502,6 +2506,7 @@ DEPENDENCIES:
   - RCTRequired (from `../node_modules/react-native/Libraries/Required`)
   - RCTSwiftUI (from `../node_modules/react-native/ReactApple/RCTSwiftUI`)
   - RCTSwiftUIWrapper (from `../node_modules/react-native/ReactApple/RCTSwiftUIWrapper`)
+  - RCTSystemSetting (from `../node_modules/react-native-system-setting`)
   - RCTTypeSafety (from `../node_modules/react-native/Libraries/TypeSafety`)
   - React (from `../node_modules/react-native/`)
   - React-callinvoker (from `../node_modules/react-native/ReactCommon/callinvoker`)
@@ -2578,6 +2583,7 @@ DEPENDENCIES:
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - "ReactNativeFs (from `../node_modules/@dr.pogodin/react-native-fs`)"
   - "ReactNativeHealthkit (from `../node_modules/@kingstinct/react-native-healthkit`)"
+  - RNAudioRecord (from `../node_modules/react-native-audio-record`)
   - RNCalendarEvents (from `../node_modules/react-native-calendar-events`)
   - RNDeviceInfo (from `../node_modules/react-native-device-info`)
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
@@ -2630,6 +2636,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactApple/RCTSwiftUI"
   RCTSwiftUIWrapper:
     :path: "../node_modules/react-native/ReactApple/RCTSwiftUIWrapper"
+  RCTSystemSetting:
+    :path: "../node_modules/react-native-system-setting"
   RCTTypeSafety:
     :path: "../node_modules/react-native/Libraries/TypeSafety"
   React:
@@ -2780,6 +2788,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@dr.pogodin/react-native-fs"
   ReactNativeHealthkit:
     :path: "../node_modules/@kingstinct/react-native-healthkit"
+  RNAudioRecord:
+    :path: "../node_modules/react-native-audio-record"
   RNCalendarEvents:
     :path: "../node_modules/react-native-calendar-events"
   RNDeviceInfo:
@@ -2831,6 +2841,7 @@ SPEC CHECKSUMS:
   RCTRequired: bb77b070f75f53398ce43c0aaaa58337cebe2bf6
   RCTSwiftUI: afc0a0a635860da1040a0b894bfd529da06d7810
   RCTSwiftUIWrapper: cbb32eb90f09bd42ea9ed1eecd51fef3294da673
+  RCTSystemSetting: 5107b7350d63b3f7b42a1277d07e4e5d9df879be
   RCTTypeSafety: d13e192a37f151ce354641184bf4239844a3be17
   React: 1ba7d364ade7d883a1ec055bfc3606f35fdee17b
   React-callinvoker: bc2a26f8d84fb01f003fc6de6c9337b64715f95b
@@ -2906,12 +2917,13 @@ SPEC CHECKSUMS:
   ReactNativeDependencies: 7f8b13ed669eef6550a388c972b4c4ada5c408e7
   ReactNativeFs: 65b6773d6d0e56ca4d086a10b15d0b7dd7d9cad1
   ReactNativeHealthkit: 4ba17a5f22c2cd8e67ab136454ad2b4bdd6805b1
+  RNAudioRecord: 162fee3b8fb628773ec704bf0333823125be2ed7
   RNCalendarEvents: 7e65eb4a94f53c1744d1e275f7fafcfaa619f7a3
   RNDeviceInfo: d79872e11c8e9c4de0d65b0ee6e0cee719f37fea
   RNFBApp: 8c63d98461bd213dfec616d1fff3c7f39c316321
   RNFBMessaging: 06572a749a2e6c511c4c7800e1b71b5d2bdb6947
   RNGestureHandler: 4a5a8962f7fbfbe6105bd9d1d30c4f24167fe109
-  RNPermissions: e25d60605c17d4e404c326a18f1d59079bb39e36
+  RNPermissions: d0ce498deecf221e40af413d487a609da7320db2
   RNReactNativeHapticFeedback: 995d32ddf0bf3637ad9a33618418636340d4135d
   RNReanimated: d570323905a3ee01616fc504a9327e7d7c48b1a5
   RNScreens: 088d923c4327c63c9f8c942cae17a9d038f47d97
@@ -2921,6 +2933,6 @@ SPEC CHECKSUMS:
   TensorFlowLiteC: eac6d689a8d391d1b202dc59e3d9165ba64aaf73
   Yoga: c0b3f2c7e8d3e327e450223a2414ca3fa296b9a2
 
-PODFILE CHECKSUM: 7ee8bb615940b953af004ffb04e7778cfd9a6041
+PODFILE CHECKSUM: 2df1d3a03186f715a7201300f5735321ecdbc40f
 
 COCOAPODS: 1.16.2

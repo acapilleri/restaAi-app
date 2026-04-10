@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -13,16 +15,15 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import {
-  initExecutorch,
-  useLLM,
-  LLAMA3_2_1B_SPINQUANT,
-  HAMMER2_1_1_5B_QUANTIZED,
-} from 'react-native-executorch';
+import { initExecutorch, useLLM, LLAMA3_2_1B_SPINQUANT } from 'react-native-executorch';
 import { BareResourceFetcher } from 'react-native-executorch-bare-resource-fetcher';
 import { setConfig } from '@kesha-antonov/react-native-background-downloader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DrawerMenuButtonWithBadge as DrawerMenuButton } from '../components/navigation/DrawerMenuButtonWithBadge';
+import {
+  collectRawBundle,
+  type RawSensorBundle,
+} from '../services/SensorBundleService';
 
 setConfig({
   isLogsEnabled: true,
@@ -136,29 +137,38 @@ const errorBannerStyles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-const SYSTEM_PROMPT = `
-  Sei un assistente utile per nutrizione e abitudini.
-  Rispondi in italiano in modo chiaro e completo quando serve
-  Usa il tool get_sensor_context SOLO quando l'utente chiede esplicitamente:
-  - dove si trova
-  - che ora è
-  - informazioni sul device
-  - il suo prossimo appuntamento
- `;
+const BASE_SYSTEM_PROMPT = `
+You are a single-word classifier. Reply with exactly one word, nothing else.
 
- const toolsConfig = {
-  tools: [{
-    name: 'get_sensor_context',
-    description: 'Leggi posizione, movimento, ora, batteria e calendario dell\'utente adesso.',
-    parameters: { type: 'dict', properties: {}, required: [] },
-  }],
-  executeToolCallback: async (call) => {
-    if (call.toolName === 'get_sensor_context') {
-      return JSON.stringify('Ecco la temperatura: 20°C')
-    }
-    return null
-  },
-  displayToolCalls: false,
+You receive a JSON with sensor data. The field "context" already contains the inferred situation.
+Map it to Italian:
+
+driving/commuting → spostando
+restaurant → mangiando
+gym/exercising → allenando
+office/home → lavorando
+meeting → lavorando
+resting + hour 0-7 → dormendo
+unknown → sconosciuto
+
+One word only. No punctuation. No explanation.
+`.trim();
+
+function buildSystemPrompt(bundle: RawSensorBundle): string {
+  const payload = {
+    collected_at: new Date().toISOString(),
+    sensors: bundle,
+  };
+  return `${BASE_SYSTEM_PROMPT}
+
+Dati sensori attuali (JSON):
+${JSON.stringify(payload)}`;
+}
+
+function buildSystemPromptOnCollectError(err: string): string {
+  return `${BASE_SYSTEM_PROMPT}
+
+Errore durante la raccolta dei dati sensori: ${err}`;
 }
 
 export function LocalChat() {
@@ -167,39 +177,85 @@ export function LocalChat() {
   const [error, setError] = useState<string | null>(null);
   const textInputRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  const sendingRef = useRef(false);
+  const lastSystemPromptRef = useRef<string | null>(null);
 
-  const llm = useLLM({ model: HAMMER2_1_1_5B_QUANTIZED })
+  const llm = useLLM({ model: LLAMA3_2_1B_SPINQUANT });
 
   useEffect(() => {
     if (!llm.isReady) return;
-    llm.configure({ chatConfig: { systemPrompt: SYSTEM_PROMPT }})
-    }, 
-    [llm.isReady]
-  );
+    llm.configure({
+      chatConfig: {
+        systemPrompt: `${BASE_SYSTEM_PROMPT}
+
+(I dati sensori completi verranno allegati al system prompt ad ogni messaggio inviato dall'utente.)`,
+      },
+    });
+    // Solo transizione isReady: oggetto llm instabile come dipendenza.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- llm
+  }, [llm.isReady]);
 
   useEffect(() => {
     if (llm.error) setError(String(llm.error));
   }, [llm.error]);
 
   const sendMessage = async () => {
-    if (!userInput.trim()) return;
+    const text = userInput.trim();
+    if (!text || sendingRef.current || llm.isGenerating) return;
 
+    sendingRef.current = true;
     setUserInput('');
     textInputRef.current?.clear();
     try {
-      await llm.sendMessage(userInput);
+      let systemPrompt: string;
+      try {
+        const bundle = await collectRawBundle();
+        systemPrompt = buildSystemPrompt(bundle);
+      } catch (e) {
+        systemPrompt = buildSystemPromptOnCollectError(
+          e instanceof Error ? e.message : String(e),
+        );
+      }
+      lastSystemPromptRef.current = systemPrompt;
+      llm.configure({ chatConfig: { systemPrompt } });
+      await llm.sendMessage(text);
+      console.log(llm.messageHistory);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      sendingRef.current = false;
     }
   };
+
   useEffect(() => {
     if (__DEV__ && llm.messageHistory.length > 0) {
-      console.log('[History]')
+      console.log('[History]');
       llm.messageHistory.forEach((m, i) => {
-        console.log(`  [${i}] role=${m.role} content=${m.content?.slice(0, 80)}`)
-      })
+        console.log(`  [${i}] role=${m.role} content=${m.content?.slice(0, 80)}`);
+      });
     }
-  }, [ [llm.messageHistory]])
+  }, [llm.messageHistory]);
+
+  const copyRawJsonForExternalLlm = () => {
+    const payload = {
+      exported_at: new Date().toISOString(),
+      screen: 'LocalChat',
+      model: 'LLAMA3_2_1B_SPINQUANT',
+      last_system_prompt_with_sensors: lastSystemPromptRef.current,
+      message_history: llm.messageHistory,
+      response_in_flight: llm.isGenerating ? (llm.response ?? null) : null,
+    };
+    const text = JSON.stringify(payload, null, 2);
+    Share.share(
+      Platform.OS === 'ios'
+        ? { message: text }
+        : { message: text, title: 'JSON AI locale' },
+    ).catch((e: unknown) => {
+      Alert.alert('Errore', e instanceof Error ? e.message : String(e));
+    });
+  };
+
+  const canCopyJson = llm.messageHistory.length > 0 || llm.isGenerating;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -215,6 +271,17 @@ export function LocalChat() {
 
         <View style={styles.appHeader}>
           <Text style={styles.headerTitle}>AI locale</Text>
+          {canCopyJson ? (
+            <TouchableOpacity
+              onPress={copyRawJsonForExternalLlm}
+              style={styles.copyJsonButton}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Esporta JSON grezzo per test con altri LLM"
+            >
+              <Text style={styles.copyJsonButtonText}>Esporta JSON</Text>
+            </TouchableOpacity>
+          ) : null}
           <DrawerMenuButton placement="trailing" />
         </View>
 
@@ -371,6 +438,20 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '700',
+    color: ColorPalette.primary,
+  },
+  copyJsonButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginRight: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: ColorPalette.blueLight,
+    backgroundColor: '#fafbff',
+  },
+  copyJsonButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
     color: ColorPalette.primary,
   },
   content: {

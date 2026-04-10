@@ -14,8 +14,11 @@ import { NativeModules, Platform } from 'react-native';
 const DEVELOPMENT = __DEV__ === true;
 /** Backend produzione (Heroku); stesso valore usato in release. */
 const REMOTE_API_HOST = 'https://resta-ai-6bf7dd4ee671.herokuapp.com';
-/** Override host dev; `null` = auto-detect da Metro o fallback simulatore/emulatore. */
-const DEV_API_HOST_OVERRIDE: string | null = null;
+/**
+ * Override host dev; `null` = auto-detect da Metro o fallback simulatore/emulatore.
+ * Esempio LAN (device fisico + API sul Mac): `http://192.168.1.58:3000` — cambia IP/porta se serve.
+ */
+const DEV_API_HOST_OVERRIDE: string | null = 'http://192.168.1.58:3000';
 
 function normalizeBaseUrl(value: string | null | undefined): string | null {
   const normalized = typeof value === 'string' ? value.trim().replace(/\/+$/, '') : '';

@@ -520,6 +520,28 @@ export async function getEssentialReadAuthRequestStatus(): Promise<Authorization
   }
 }
 
+/** Etichetta stabile per JSON sensori / LLM (HealthKit non espone lettura negata vs dati assenti). */
+export type HealthKitReadRequestLabel =
+  | 'unavailable'
+  | 'unknown'
+  | 'not_determined'
+  | 'already_prompted';
+
+export async function getHealthKitReadRequestLabel(): Promise<HealthKitReadRequestLabel> {
+  if (Platform.OS !== 'ios') return 'unavailable';
+  try {
+    const avail = await isHealthDataAvailableAsync();
+    if (!avail) return 'unavailable';
+  } catch {
+    return 'unavailable';
+  }
+  const st = await getEssentialReadAuthRequestStatus();
+  if (st == null) return 'unknown';
+  if (st === AuthorizationRequestStatus.shouldRequest) return 'not_determined';
+  if (st === AuthorizationRequestStatus.unnecessary) return 'already_prompted';
+  return 'unknown';
+}
+
 /** Dati aggregati per oggi + ultimo peso. Richiede autorizzazione già concessa. */
 export async function fetchAppleHealthSnapshot(): Promise<AppleHealthSnapshot> {
   const empty: AppleHealthSnapshot = {

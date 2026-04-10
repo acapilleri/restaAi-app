@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useMemo } from 'react';
-import { StatusBar } from 'react-native';
+import { Platform, StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
@@ -18,6 +18,8 @@ import { subscribeForegroundMessages, subscribeTokenRefresh } from './src/servic
 import { setConfig as setBackgroundDownloaderConfig } from '@kesha-antonov/react-native-background-downloader';
 import { initExecutorch } from 'react-native-executorch';
 import { BareResourceFetcher } from 'react-native-executorch-bare-resource-fetcher';
+import { NativeInferenceBridge } from './src/components/NativeInferenceBridge';
+import { loadAndSyncIosGeofencePoisFromStorage } from './src/services/iosGeofencePois';
 
 if (__DEV__) {
   try {
@@ -103,6 +105,11 @@ function AppWithNavigationTheme() {
     };
   }, [queryClient]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    void loadAndSyncIosGeofencePoisFromStorage();
+  }, []);
+
   return (
     <>
       <StatusBar
@@ -123,6 +130,7 @@ function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <SensorFusionProvider>
+          <NativeInferenceBridge />
           <ThemeProvider>
             <QueryClientProvider client={queryClient}>
               <AppWithNavigationTheme />

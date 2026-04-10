@@ -19,7 +19,11 @@ import DeviceInfo from 'react-native-device-info';
 import type { TensorflowModel } from 'react-native-fast-tflite';
 
 import apiClient from '../api/client';
-import { fetchAppleHealthSnapshotCached } from './appleHealth';
+import {
+  fetchAppleHealthSnapshotCached,
+  getHealthKitReadRequestLabel,
+  type HealthKitReadRequestLabel,
+} from './appleHealth';
 
 // react-native-sensors: niente import top-level (può lanciare se i native module mancano).
 let rnAccelerometer: any = null;
@@ -53,7 +57,12 @@ interface GpsData {
   altitude_m: number | null;
   heading_deg: number | null;
   accuracy_m: number | null;
+  /** Euristica locale (centroidi / bbox), senza geocoding esterno. */
+  area_hint_it: string | null;
+  coarse_region_it: string | null;
 }
+
+export type ImuCollectionStatus = 'ok' | 'module_unavailable' | 'no_samples' | 'error';
 
 interface ImuData {
   acceleration_magnitude: number | null;
@@ -61,7 +70,17 @@ interface ImuData {
   magnetic_heading: number | null;
   pressure_hpa: number | null;
   estimated_floor: number | null;
+  imu_status: ImuCollectionStatus;
+  imu_status_detail: string | null;
 }
+
+export type AudioCollectionStatus =
+  | 'ok'
+  | 'skipped'
+  | 'module_missing'
+  | 'init_failed'
+  | 'capture_failed'
+  | 'no_mic_data';
 
 interface AudioData {
   db_level: number | null;
@@ -72,6 +91,8 @@ interface AudioData {
   audio_scene_confidence: number | null;
   voice_activity: boolean | null;
   voice_probability: number | null;
+  audio_status: AudioCollectionStatus;
+  audio_status_detail: string | null;
 }
 
 interface BluetoothData {
@@ -94,9 +115,12 @@ interface CalendarData {
 }
 
 interface SystemData {
-  battery_level: number;
+  /** null = lettura non disponibile o non affidabile (non confondere con 0%). */
+  battery_level: number | null;
   is_charging: boolean;
-  network_type: 'wifi' | 'cellular' | 'none';
+  network_type: 'wifi' | 'cellular' | 'none' | 'unknown';
+  /** `unavailable` se il modulo NetInfo non è nel binary o fetch fallita. */
+  network_source: 'netinfo' | 'unavailable';
   wifi_ssid: string | null;
   app_state: 'active' | 'background' | 'inactive';
   screen_brightness: number;
@@ -114,6 +138,7 @@ interface HealthData {
   last_workout_type: string | null;
   last_workout_minutes_ago: number | null;
   stand_hours_today: number | null;
+  healthkit_read_status: HealthKitReadRequestLabel;
 }
 
 interface TemporalData {
@@ -122,6 +147,10 @@ interface TemporalData {
   day_of_week: number;
   is_weekend: boolean;
   time_of_day: 'night' | 'morning' | 'lunch' | 'afternoon' | 'dinner' | 'evening';
+  /** Etichetta italiana allineata a `time_of_day`. */
+  time_of_day_it: string;
+  /** Es. "14:18, pomeriggio" (timezone locale dispositivo). */
+  local_time_label_it: string;
   timestamp_iso: string;
 }
 
@@ -236,6 +265,66 @@ function radToDeg(rad: number): number {
   return (rad * 180) / Math.PI;
 }
 
+const EARTH_RADIUS_KM = 6371;
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toR = (d: number) => (d * Math.PI) / 180;
+  const dLat = toR(lat2 - lat1);
+  const dLon = toR(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toR(lat1)) * Math.cos(toR(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return EARTH_RADIUS_KM * c;
+}
+
+/** Centroidi approssimati + raggio: niente API esterne. */
+const ITALY_CITY_HINTS: Array<{ label: string; lat: number; lon: number; radiusKm: number }> = [
+  { label: 'Catania / Sicilia orientale', lat: 37.5079, lon: 15.083, radiusKm: 42 },
+  { label: 'Messina', lat: 38.1938, lon: 15.554, radiusKm: 35 },
+  { label: 'Siracusa', lat: 37.0755, lon: 15.2866, radiusKm: 38 },
+  { label: 'Palermo', lat: 38.1157, lon: 13.3615, radiusKm: 45 },
+  { label: 'Roma', lat: 41.9028, lon: 12.4964, radiusKm: 45 },
+  { label: 'Milano', lat: 45.4642, lon: 9.19, radiusKm: 40 },
+  { label: 'Napoli', lat: 40.8518, lon: 14.2681, radiusKm: 42 },
+  { label: 'Torino', lat: 45.0703, lon: 7.6869, radiusKm: 38 },
+  { label: 'Firenze', lat: 43.7696, lon: 11.2558, radiusKm: 35 },
+  { label: 'Bologna', lat: 44.4949, lon: 11.3426, radiusKm: 35 },
+  { label: 'Genova', lat: 44.4056, lon: 8.9463, radiusKm: 35 },
+  { label: 'Venezia', lat: 45.4408, lon: 12.3155, radiusKm: 35 },
+  { label: 'Bari', lat: 41.1177, lon: 16.8719, radiusKm: 40 },
+  { label: 'Verona', lat: 45.4384, lon: 10.9916, radiusKm: 32 },
+];
+
+function inferGpsAreaHints(lat: number, lon: number): Pick<GpsData, 'area_hint_it' | 'coarse_region_it'> {
+  let best: { label: string; d: number } | null = null;
+  for (const c of ITALY_CITY_HINTS) {
+    const d = haversineKm(lat, lon, c.lat, c.lon);
+    if (d <= c.radiusKm && (!best || d < best.d)) {
+      best = { label: c.label, d };
+    }
+  }
+  if (best) {
+    return {
+      area_hint_it: `Probabile zona: ${best.label} (euristica su coordinate)`,
+      coarse_region_it: best.label,
+    };
+  }
+  if (lat >= 36.6 && lat <= 38.35 && lon >= 12.3 && lon <= 15.85) {
+    return {
+      area_hint_it: 'Coordinate in Sicilia (città non riconosciuta dalla tabella locale)',
+      coarse_region_it: 'Sicilia',
+    };
+  }
+  if (lat >= 35.5 && lat <= 47.1 && lon >= 6.6 && lon <= 18.5) {
+    return {
+      area_hint_it: 'Coordinate in Italia (area metropolitana non in tabella)',
+      coarse_region_it: 'Italia',
+    };
+  }
+  return { area_hint_it: null, coarse_region_it: null };
+}
+
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error(`${label} timeout`)), ms);
@@ -260,6 +349,8 @@ function emptyGps(): GpsData {
     altitude_m: null,
     heading_deg: null,
     accuracy_m: null,
+    area_hint_it: null,
+    coarse_region_it: null,
   };
 }
 
@@ -270,10 +361,12 @@ function emptyImu(): ImuData {
     magnetic_heading: null,
     pressure_hpa: null,
     estimated_floor: null,
+    imu_status: 'module_unavailable',
+    imu_status_detail: null,
   };
 }
 
-function emptyAudio(): AudioData {
+function emptyAudio(overrides?: Partial<Pick<AudioData, 'audio_status' | 'audio_status_detail'>>): AudioData {
   return {
     db_level: null,
     audio_output: null,
@@ -283,6 +376,8 @@ function emptyAudio(): AudioData {
     audio_scene_confidence: null,
     voice_activity: null,
     voice_probability: null,
+    audio_status: overrides?.audio_status ?? 'module_missing',
+    audio_status_detail: overrides?.audio_status_detail ?? null,
   };
 }
 
@@ -311,9 +406,10 @@ function emptyCalendar(): CalendarData {
 
 function defaultSystem(): SystemData {
   return {
-    battery_level: 0,
+    battery_level: null,
     is_charging: false,
-    network_type: 'none',
+    network_type: 'unknown',
+    network_source: 'unavailable',
     wifi_ssid: null,
     app_state: 'active',
     screen_brightness: 0,
@@ -323,7 +419,7 @@ function defaultSystem(): SystemData {
   };
 }
 
-function emptyHealth(): HealthData {
+function emptyHealth(healthkit_read_status: HealthKitReadRequestLabel = 'unknown'): HealthData {
   return {
     steps_today: null,
     resting_hr_bpm: null,
@@ -333,6 +429,7 @@ function emptyHealth(): HealthData {
     last_workout_type: null,
     last_workout_minutes_ago: null,
     stand_hours_today: null,
+    healthkit_read_status,
   };
 }
 
@@ -544,13 +641,17 @@ async function collectGps(): Promise<GpsData> {
           const s = pos.coords.speed;
           const speedKmh =
             s != null && Number.isFinite(s) && s >= 0 ? s * 3.6 : s != null && Number.isFinite(s) ? Math.abs(s) * 3.6 : null;
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const hints = inferGpsAreaHints(lat, lon);
           resolve({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
+            latitude: lat,
+            longitude: lon,
             speed_kmh: speedKmh,
             altitude_m: pos.coords.altitude ?? null,
             heading_deg: pos.coords.heading ?? null,
             accuracy_m: pos.coords.accuracy ?? null,
+            ...hints,
           });
         },
         (e) => reject(e),
@@ -569,16 +670,14 @@ async function collectGps(): Promise<GpsData> {
 }
 
 async function collectImu(): Promise<ImuData> {
-  const empty: ImuData = {
-    acceleration_magnitude: null,
-    rotation_rate_deg_s: null,
-    magnetic_heading: null,
-    pressure_hpa: null,
-    estimated_floor: null,
-  };
+  const baseEmpty = emptyImu();
 
   if (!rnAccelerometer || !rnSetUpdateIntervalForType || !rnSensorTypes) {
-    return empty;
+    return {
+      ...baseEmpty,
+      imu_status: 'module_unavailable',
+      imu_status_detail: 'react-native-sensors non disponibile o non linkato',
+    };
   }
 
   try {
@@ -598,28 +697,44 @@ async function collectImu(): Promise<ImuData> {
     const subs: Array<{ unsubscribe: () => void }> = [];
     const deadline = Date.now() + 450;
 
+    const noopSensorError = (): void => {
+      /* Simulatore / hardware assente: l'observable emette error; senza handler va su console globale. */
+    };
+
     try {
       subs.push(
-        rnAccelerometer.subscribe(({ x, y, z }: { x: number; y: number; z: number }) => {
-          const m = Math.sqrt(x * x + y * y + z * z);
-          if (m > maxAcc) maxAcc = m;
+        rnAccelerometer.subscribe({
+          next: ({ x, y, z }: { x: number; y: number; z: number }) => {
+            const m = Math.sqrt(x * x + y * y + z * z);
+            if (m > maxAcc) maxAcc = m;
+          },
+          error: noopSensorError,
         }),
       );
       subs.push(
-        rnGyroscope.subscribe(({ x, y, z }: { x: number; y: number; z: number }) => {
-          const m = Math.sqrt(x * x + y * y + z * z);
-          if (m > maxGyroRad) maxGyroRad = m;
+        rnGyroscope.subscribe({
+          next: ({ x, y, z }: { x: number; y: number; z: number }) => {
+            const m = Math.sqrt(x * x + y * y + z * z);
+            if (m > maxGyroRad) maxGyroRad = m;
+          },
+          error: noopSensorError,
         }),
       );
       subs.push(
-        rnMagnetometer.subscribe(({ x, y }: { x: number; y: number }) => {
-          const h = (radToDeg(Math.atan2(y, x)) + 360) % 360;
-          heading = h;
+        rnMagnetometer.subscribe({
+          next: ({ x, y }: { x: number; y: number }) => {
+            const h = (radToDeg(Math.atan2(y, x)) + 360) % 360;
+            heading = h;
+          },
+          error: noopSensorError,
         }),
       );
       subs.push(
-        rnBarometer.subscribe(({ pressure: p }: { pressure: number }) => {
-          if (typeof p === 'number' && Number.isFinite(p)) pressure = p;
+        rnBarometer.subscribe({
+          next: ({ pressure: p }: { pressure: number }) => {
+            if (typeof p === 'number' && Number.isFinite(p)) pressure = p;
+          },
+          error: noopSensorError,
         }),
       );
 
@@ -652,72 +767,90 @@ async function collectImu(): Promise<ImuData> {
       }
     }
 
+    const hasAnySample =
+      maxAcc > 0 ||
+      maxGyroRad > 0 ||
+      heading != null ||
+      (pressure != null && Number.isFinite(pressure));
     return {
       acceleration_magnitude: maxAcc > 0 ? maxAcc : null,
       rotation_rate_deg_s: maxGyroRad > 0 ? radToDeg(maxGyroRad) : null,
       magnetic_heading: heading,
       pressure_hpa: pressure,
       estimated_floor: floor,
+      imu_status: hasAnySample ? 'ok' : 'no_samples',
+      imu_status_detail: hasAnySample ? null : 'nessun campione nella finestra (~450ms); verifica permesso Motion e device fisico',
     };
-  } catch {
-    return empty;
+  } catch (e) {
+    return {
+      ...baseEmpty,
+      imu_status: 'error',
+      imu_status_detail: e instanceof Error ? e.message : String(e),
+    };
   }
 }
 
 async function collectAudio(): Promise<AudioData> {
-  const empty = emptyAudio();
   /* Stato chiamate: react-native-call-detection non è compatibile con RN recente (BatchedBridge.registerCallableModule). */
 
   const AudioRecord = getAudioRecordModule();
+  if (!AudioRecord) {
+    return emptyAudio({
+      audio_status: 'module_missing',
+      audio_status_detail: 'modulo RNAudioRecord assente dal binary',
+    });
+  }
 
   let dbLevel: number | null = null;
   const chunks: Buffer[] = [];
   let rmsAcc = 0;
   let rmsN = 0;
+  let captureError: string | null = null;
 
-  if (AudioRecord) {
-    try {
-      AudioRecord.init({
-        sampleRate: 16000,
-        channels: 1,
-        bitsPerSample: 16,
-        wavFile: 'sensor_bundle_meter.wav',
-      });
-    } catch {
-      return empty;
-    }
+  try {
+    AudioRecord.init({
+      sampleRate: 16000,
+      channels: 1,
+      bitsPerSample: 16,
+      wavFile: 'sensor_bundle_meter.wav',
+    });
+  } catch (e) {
+    return emptyAudio({
+      audio_status: 'init_failed',
+      audio_status_detail: e instanceof Error ? e.message : String(e),
+    });
+  }
 
-    let dataSub: { remove: () => void } | null = null;
-    try {
-      const sub = AudioRecord.on('data', (data: string) => {
-        try {
-          const buf = Buffer.from(data, 'base64');
-          chunks.push(buf);
-          const f = pcmChunkToFloat(buf);
-          for (let i = 0; i < f.length; i++) {
-            rmsAcc += f[i] * f[i];
-            rmsN++;
-          }
-        } catch {
-          /* ignore */
+  let dataSub: { remove: () => void } | null = null;
+  try {
+    const sub = AudioRecord.on('data', (data: string) => {
+      try {
+        const buf = Buffer.from(data, 'base64');
+        chunks.push(buf);
+        const f = pcmChunkToFloat(buf);
+        for (let i = 0; i < f.length; i++) {
+          rmsAcc += f[i] * f[i];
+          rmsN++;
         }
-      }) as { remove: () => void } | void;
-      dataSub = sub && typeof sub === 'object' && 'remove' in sub ? sub : null;
-      AudioRecord.start();
-      await new Promise<void>((resolve) => setTimeout(() => resolve(), 420));
+      } catch {
+        /* ignore */
+      }
+    }) as { remove: () => void } | void;
+    dataSub = sub && typeof sub === 'object' && 'remove' in sub ? sub : null;
+    AudioRecord.start();
+    await new Promise<void>((resolve) => setTimeout(() => resolve(), 420));
+  } catch (e) {
+    captureError = e instanceof Error ? e.message : String(e);
+  } finally {
+    try {
+      AudioRecord.stop();
     } catch {
       /* ignore */
-    } finally {
-      try {
-        AudioRecord.stop();
-      } catch {
-        /* ignore */
-      }
-      try {
-        dataSub?.remove();
-      } catch {
-        /* ignore */
-      }
+    }
+    try {
+      dataSub?.remove();
+    } catch {
+      /* ignore */
     }
   }
 
@@ -755,6 +888,19 @@ async function collectAudio(): Promise<AudioData> {
   const yam = await runYamnetScene(waveform);
   const { voice_probability, voice_activity } = estimateVoiceFromDb(dbLevel);
 
+  let audio_status: AudioCollectionStatus;
+  let audio_status_detail: string | null;
+  if (rmsN > 0) {
+    audio_status = 'ok';
+    audio_status_detail = null;
+  } else if (captureError) {
+    audio_status = 'capture_failed';
+    audio_status_detail = captureError;
+  } else {
+    audio_status = 'no_mic_data';
+    audio_status_detail = 'nessun campione PCM nella finestra; verifica permesso microfono';
+  }
+
   return {
     db_level: dbLevel,
     audio_output: null,
@@ -764,6 +910,8 @@ async function collectAudio(): Promise<AudioData> {
     audio_scene_confidence: yam.conf > 0 ? yam.conf : null,
     voice_activity,
     voice_probability,
+    audio_status,
+    audio_status_detail,
   };
 }
 
@@ -910,6 +1058,7 @@ async function fetchNetInfoState(): Promise<{ type: string; details: unknown } |
 async function collectSystem(): Promise<SystemData> {
   const d = defaultSystem();
   try {
+    // `react-native-system-setting` (pod RCTSystemSetting / SystemSetting). Senza dipendenza nativa, SS è null → sempre 0.
     const brightnessP = (() => {
       const SS = getSystemSettingModule();
       return SS ? SS.getBrightness().catch(() => 0) : Promise.resolve(0);
@@ -924,16 +1073,33 @@ async function collectSystem(): Promise<SystemData> {
       DeviceInfo.getModel(),
     ]);
 
-    const type = netState?.type ?? 'none';
-    const net: SystemData['network_type'] =
-      type === 'wifi' ? 'wifi' : type === 'cellular' ? 'cellular' : 'none';
-
+    const nm = NativeModules as { RNCNetInfo?: unknown };
+    const netModuleOk = nm.RNCNetInfo != null;
+    let network_type: SystemData['network_type'];
+    let network_source: SystemData['network_source'];
     let ssid: string | null = null;
-    try {
-      const di = netState?.details as { ssid?: string } | null;
-      if (di && typeof di.ssid === 'string') ssid = di.ssid;
-    } catch {
-      ssid = null;
+
+    if (!netModuleOk || netState == null) {
+      network_type = 'unknown';
+      network_source = 'unavailable';
+    } else {
+      network_source = 'netinfo';
+      const type = String(netState.type ?? '').toLowerCase();
+      if (type === 'wifi') network_type = 'wifi';
+      else if (type === 'cellular') network_type = 'cellular';
+      else if (type === 'none') network_type = 'none';
+      else network_type = 'unknown';
+      try {
+        const di = netState.details as { ssid?: string } | null;
+        if (di && typeof di.ssid === 'string') ssid = di.ssid;
+      } catch {
+        ssid = null;
+      }
+    }
+
+    let battery_level: number | null = null;
+    if (typeof level === 'number' && Number.isFinite(level) && level >= 0 && level <= 1) {
+      battery_level = Math.round(Math.min(100, Math.max(0, level * 100)));
     }
 
     const as = AppState.currentState;
@@ -943,9 +1109,10 @@ async function collectSystem(): Promise<SystemData> {
     const freeMb = (totalM - usedM) / (1024 * 1024);
 
     return {
-      battery_level: Math.round(Math.min(100, Math.max(0, level * 100))),
+      battery_level,
       is_charging: charging,
-      network_type: net,
+      network_type,
+      network_source,
       wifi_ssid: ssid,
       app_state,
       screen_brightness: typeof brightness === 'number' ? Math.min(1, Math.max(0, brightness)) : 0,
@@ -959,9 +1126,15 @@ async function collectSystem(): Promise<SystemData> {
 }
 
 async function collectHealth(): Promise<HealthData> {
-  const empty = emptyHealth();
+  let hk: HealthKitReadRequestLabel = 'unknown';
   try {
-    if (Platform.OS !== 'ios') return empty;
+    hk = await getHealthKitReadRequestLabel();
+  } catch {
+    hk = 'unknown';
+  }
+  const fallback = emptyHealth(hk);
+  try {
+    if (Platform.OS !== 'ios') return fallback;
     const s = await fetchAppleHealthSnapshotCached();
     return {
       steps_today: s.stepsToday,
@@ -972,11 +1145,21 @@ async function collectHealth(): Promise<HealthData> {
       last_workout_type: null,
       last_workout_minutes_ago: null,
       stand_hours_today: null,
+      healthkit_read_status: hk,
     };
   } catch {
-    return empty;
+    return fallback;
   }
 }
+
+const TIME_OF_DAY_IT: Record<TemporalData['time_of_day'], string> = {
+  night: 'notte',
+  morning: 'mattina',
+  lunch: 'pranzo',
+  afternoon: 'pomeriggio',
+  dinner: 'cena',
+  evening: 'sera',
+};
 
 function collectTemporal(): TemporalData {
   const d = new Date();
@@ -993,12 +1176,19 @@ function collectTemporal(): TemporalData {
   else if (hour < 20) time_of_day = 'dinner';
   else time_of_day = 'evening';
 
+  const hh = String(hour).padStart(2, '0');
+  const mm = String(minute).padStart(2, '0');
+  const time_of_day_it = TIME_OF_DAY_IT[time_of_day];
+  const local_time_label_it = `${hh}:${mm}, ${time_of_day_it}`;
+
   return {
     hour,
     minute,
     day_of_week: day,
     is_weekend: isWeekend,
     time_of_day,
+    time_of_day_it,
+    local_time_label_it,
     timestamp_iso: d.toISOString(),
   };
 }
@@ -1048,7 +1238,16 @@ async function collectBehavioral(): Promise<BehavioralData> {
   }
 }
 
-function parseJsonContext(raw: string): ContextState | null {
+/** LLM spesso emette camelCase; accetta alias comuni. */
+function pickContextField(o: Record<string, unknown>, snake: string, ...camelAliases: string[]): unknown {
+  if (Object.prototype.hasOwnProperty.call(o, snake)) return o[snake];
+  for (const k of camelAliases) {
+    if (Object.prototype.hasOwnProperty.call(o, k)) return o[k];
+  }
+  return undefined;
+}
+
+export function parseContextStateFromHammerText(raw: string): ContextState | null {
   let t = raw.trim();
   const start = t.indexOf('{');
   if (start < 0) return null;
@@ -1056,17 +1255,24 @@ function parseJsonContext(raw: string): ContextState | null {
   if (!t.endsWith('}')) t += '}';
   try {
     const o = JSON.parse(t) as Record<string, unknown>;
+    const keyInsightRaw = pickContextField(o, 'key_insight', 'keyInsight', 'insight', 'summary');
+    const interventionRaw = pickContextField(o, 'intervention_reason', 'interventionReason');
+    const mealRaw = pickContextField(o, 'meal_window', 'mealWindow');
+    const interveneRaw = pickContextField(o, 'should_intervene', 'shouldIntervene');
     return {
-      context: o.context as ContextState['context'],
-      available: o.available as ContextState['available'],
-      stress_level: o.stress_level as ContextState['stress_level'],
-      meal_window: Boolean(o.meal_window),
-      physical_state: o.physical_state as ContextState['physical_state'],
-      social_context: o.social_context as ContextState['social_context'],
-      key_insight: String(o.key_insight ?? ''),
-      should_intervene: Boolean(o.should_intervene),
-      intervention_reason: o.intervention_reason == null ? null : String(o.intervention_reason),
-      confidence: typeof o.confidence === 'number' ? o.confidence : Number(o.confidence) || 0,
+      context: pickContextField(o, 'context') as ContextState['context'],
+      available: pickContextField(o, 'available') as ContextState['available'],
+      stress_level: pickContextField(o, 'stress_level', 'stressLevel') as ContextState['stress_level'],
+      meal_window: Boolean(mealRaw),
+      physical_state: pickContextField(o, 'physical_state', 'physicalState') as ContextState['physical_state'],
+      social_context: pickContextField(o, 'social_context', 'socialContext') as ContextState['social_context'],
+      key_insight: keyInsightRaw == null ? '' : String(keyInsightRaw),
+      should_intervene: Boolean(interveneRaw),
+      intervention_reason: interventionRaw == null ? null : String(interventionRaw),
+      confidence:
+        typeof o.confidence === 'number'
+          ? o.confidence
+          : Number(pickContextField(o, 'confidence')) || 0,
     };
   } catch {
     return null;
@@ -1134,7 +1340,12 @@ type CollectBundleMode = { /** Salta mic + YAMNet: uso per tick live (meno crash
 
 async function collectRawBundleImpl(mode: CollectBundleMode): Promise<RawSensorBundle> {
   const audioP = mode.skipAudio
-    ? Promise.resolve(emptyAudio())
+    ? Promise.resolve(
+        emptyAudio({
+          audio_status: 'skipped',
+          audio_status_detail: 'modalità lite: microfono e YAMNet non richiesti',
+        }),
+      )
     : withTimeout(collectAudio(), COLLECTOR_TIMEOUT_MS, 'audio');
 
   const settled = await Promise.allSettled([
@@ -1209,8 +1420,9 @@ export function fuseContextWithRules(bundle: RawSensorBundle): ContextState {
   let meal_window = false;
   let physical_state: ContextState['physical_state'] = 'sedentary';
   let social_context: ContextState['social_context'] = 'unknown';
-  let should_intervene = true;
-  const intervention_reason: string | null = null;
+  // should_intervene: false di default, true solo se c'è motivo predittivo concreto
+  let should_intervene = false;
+  let intervention_reason: string | null = null;
 
   const speed = gps.speed_kmh ?? 0;
 
@@ -1243,12 +1455,38 @@ export function fuseContextWithRules(bundle: RawSensorBundle): ContextState {
     physical_state = 'post_workout';
   }
 
-  if (system.battery_level < 15) {
-    should_intervene = false;
-  }
-
   if (temporal.time_of_day === 'lunch' || temporal.time_of_day === 'dinner') {
     meal_window = true;
+  }
+
+  const batteryCritical = system.battery_level != null && system.battery_level < 15;
+
+  if (!batteryCritical) {
+    // 1. Finestra pasto imminente + utente disponibile
+    if (meal_window && context !== 'driving' && context !== 'meeting') {
+      should_intervene = true;
+      intervention_reason = `Sono le ${temporal.local_time_label_it} — momento pasto`;
+    }
+
+    // 2. Troppo tempo dall'ultimo pasto (> 5 ore)
+    if (
+      bundle.behavioral.last_meal_logged_min_ago != null &&
+      bundle.behavioral.last_meal_logged_min_ago > 300
+    ) {
+      should_intervene = true;
+      intervention_reason = `Non mangi da ${Math.round(bundle.behavioral.last_meal_logged_min_ago / 60)} ore`;
+    }
+
+    // 3. Vicino all'ora tipica di pranzo dell'utente (± 20 min)
+    if (bundle.behavioral.typical_lunch_hour != null) {
+      const diffMin = Math.abs(
+        temporal.hour * 60 + temporal.minute - bundle.behavioral.typical_lunch_hour * 60,
+      );
+      if (diffMin <= 20 && context !== 'driving' && context !== 'meeting') {
+        should_intervene = true;
+        intervention_reason = `Di solito pranzi intorno a quest'ora`;
+      }
+    }
   }
 
   const key_insight =
@@ -1289,6 +1527,7 @@ export function compactSensorBundleForLlm(bundle: RawSensorBundle): {
         battery: bundle.system.battery_level,
         charging: bundle.system.is_charging,
         network: bundle.system.network_type,
+        network_source: bundle.system.network_source,
         app_state: bundle.system.app_state,
         brightness: bundle.system.screen_brightness,
       },
@@ -1299,18 +1538,24 @@ export function compactSensorBundleForLlm(bundle: RawSensorBundle): {
               lon: Math.round(bundle.gps.longitude * 1e4) / 1e4,
               speed_kmh: bundle.gps.speed_kmh,
               accuracy_m: bundle.gps.accuracy_m,
+              area_hint_it: bundle.gps.area_hint_it,
+              coarse_region_it: bundle.gps.coarse_region_it,
             }
           : null,
       imu: {
         acceleration_magnitude: bundle.imu.acceleration_magnitude,
         rotation_rate_deg_s: bundle.imu.rotation_rate_deg_s,
         pressure_hpa: bundle.imu.pressure_hpa,
+        imu_status: bundle.imu.imu_status,
+        imu_status_detail: bundle.imu.imu_status_detail,
       },
       audio: {
         db_level: bundle.audio.db_level,
         audio_scene: bundle.audio.audio_scene,
         audio_output: bundle.audio.audio_output,
         voice_activity: bundle.audio.voice_activity,
+        audio_status: bundle.audio.audio_status,
+        audio_status_detail: bundle.audio.audio_status_detail,
       },
       bluetooth: {
         enabled: bundle.bluetooth.enabled,
@@ -1332,6 +1577,7 @@ export function compactSensorBundleForLlm(bundle: RawSensorBundle): {
         hrv_ms: bundle.health.hrv_ms,
         sleep_hours: bundle.health.sleep_hours,
         last_workout_minutes_ago: bundle.health.last_workout_minutes_ago,
+        healthkit_read_status: bundle.health.healthkit_read_status,
       },
       behavioral: bundle.behavioral,
     },
@@ -1371,7 +1617,7 @@ Regole di inferenza:
 - health.hrv_ms < 30 OR resting_hr_bpm > 90 → stress_level: high
 - health.sleep_hours < 6 → stress_level: medium (minimo)
 - health.last_workout_minutes_ago < 60 → physical_state: post_workout
-- system.battery_level < 15 → should_intervene: false sempre
+- system.battery_level not null and < 15 → should_intervene: false sempre
 - time_of_day in [lunch,dinner] → meal_window: true
 
 JSON richiesto (tutti i campi, nessuno aggiuntivo):
@@ -1401,7 +1647,7 @@ JSON richiesto (tutti i campi, nessuno aggiuntivo):
     const end = response.lastIndexOf('}');
     if (start === -1 || end === -1) throw new Error('JSON non trovato');
 
-    const parsed = parseJsonContext(response.slice(start, end + 1));
+    const parsed = parseContextStateFromHammerText(response.slice(start, end + 1));
     if (parsed) {
       if (__DEV__) console.log('[SensorBundle] context LLM:', parsed);
       return parsed;
@@ -1421,7 +1667,7 @@ function commitDebugSnapshot(snapshot: SensorBundleDebugSnapshot): void {
 }
 
 /** Snapshot in background: non usa l'LLM (solo regole) per evitare `generate` concorrente sullo stesso modello. */
-export async function collectAndSend(_llm?: LLMType | null): Promise<void> {
+export async function collectAndSend(_llm?: LLMType | null): Promise<ContextState | null> {
   try {
     const bundle = await collectRawBundle();
 
@@ -1454,6 +1700,7 @@ export async function collectAndSend(_llm?: LLMType | null): Promise<void> {
       console.log('[SensorBundle] snapshot locale (server disattivato)');
       console.log('[SensorBundle] context:', JSON.stringify(ctx, null, 2));
     }
+    return ctx;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     commitDebugSnapshot({
@@ -1463,6 +1710,7 @@ export async function collectAndSend(_llm?: LLMType | null): Promise<void> {
       fuseError: null,
       collectionError: msg,
     });
+    return null;
   }
 }
 

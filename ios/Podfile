@@ -25,6 +25,8 @@ $FirebaseSDKVersion = '11.6.0'
 setup_permissions([
   'LocationWhenInUse',
   'Notifications',
+  'Motion',
+  'Microphone',
 ])
 
 linkage = ENV['USE_FRAMEWORKS']

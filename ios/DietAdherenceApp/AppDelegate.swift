@@ -1,9 +1,9 @@
+import os.log
 import UIKit
 import FirebaseCore
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
-
 /// Evita il crash in `FIRInstallations validateAPIKey:` quando `GoogleService-Info.plist`
 /// è ancora il placeholder (da sostituire con il file scaricato da Firebase Console per `org.resta.ai`).
 private func isFirebaseConfiguredInPlist() -> Bool {
@@ -41,6 +41,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       )
 #endif
     }
+
+    // BackgroundTasks: registrare gli handler il prima possibile entro `didFinishLaunching` (prima del lavoro pesante),
+    // vedi https://developer.apple.com/documentation/backgroundtasks/bgtaskscheduler
+    os_log(.info, log: OSLog(subsystem: "org.resta.ai", category: "AppDelegate"), "[BGTask] register + initial schedule")
+    BackgroundTaskManager.shared.registerBackgroundTask()
+    BackgroundTaskManager.shared.scheduleAppRefresh()
+
     let delegate = ReactNativeDelegate()
     let factory = RCTReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
@@ -56,7 +63,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       launchOptions: launchOptions
     )
 
+    //LocationTriggerManager.shared.start()
+
     return true
+  }
+
+  func applicationDidBecomeActive(_ application: UIApplication) {
+    // Ripianifica il prossimo `BGAppRefreshTask` quando l’app torna attiva (pattern descritto in
+    // https://developer.apple.com/documentation/uikit/using-background-tasks-to-update-your-app )
+    BackgroundTaskManager.shared.scheduleAppRefresh()
+    LocationTriggerManager.shared.ensureMonitoringForCurrentAuthorization()
+    ContextInferenceCoordinator.shared.retryQueuedRequests()
   }
 }
 

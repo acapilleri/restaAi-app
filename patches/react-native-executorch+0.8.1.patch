@@ -1,0 +1,27 @@
+diff --git a/node_modules/react-native-executorch/lib/module/constants/versions.js b/node_modules/react-native-executorch/lib/module/constants/versions.js
+index b79b088..9e8e5af 100644
+--- a/node_modules/react-native-executorch/lib/module/constants/versions.js
++++ b/node_modules/react-native-executorch/lib/module/constants/versions.js
+@@ -1,6 +1,7 @@
+ "use strict";
+ 
+ export const URL_PREFIX = 'https://huggingface.co/software-mansion/react-native-executorch';
+-export const VERSION_TAG = 'resolve/v0.8.0';
+-export const NEXT_VERSION_TAG = 'resolve/v0.9.0';
++/** HF repo: tag v0.8.0 non valido su HF; usare branch main per gli artefatti .pte. */
++export const VERSION_TAG = 'resolve/main';
++export const NEXT_VERSION_TAG = 'resolve/main';
+ //# sourceMappingURL=versions.js.map
+\ No newline at end of file
+diff --git a/node_modules/react-native-executorch/src/constants/versions.ts b/node_modules/react-native-executorch/src/constants/versions.ts
+index 6d093e9..648603e 100644
+--- a/node_modules/react-native-executorch/src/constants/versions.ts
++++ b/node_modules/react-native-executorch/src/constants/versions.ts
+@@ -1,4 +1,5 @@
+ export const URL_PREFIX =
+   'https://huggingface.co/software-mansion/react-native-executorch';
+-export const VERSION_TAG = 'resolve/v0.8.0';
+-export const NEXT_VERSION_TAG = 'resolve/v0.9.0';
++/** HF repo: tag v0.8.0 non valido su HF; usare branch main per gli artefatti .pte. */
++export const VERSION_TAG = 'resolve/main';
++export const NEXT_VERSION_TAG = 'resolve/main';

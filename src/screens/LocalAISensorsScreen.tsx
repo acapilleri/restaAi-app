@@ -186,7 +186,7 @@ export function LocalAISensorsScreen() {
     ]);
 
     try {
-      await llm.generate(payload);
+      await llm.sendMessage(userText);
     } catch {
       /* useLLM imposta già error */
     }

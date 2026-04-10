@@ -35,6 +35,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Resta si connette al Mac sulla rete locale per lo sviluppo (server JavaScript Metro) e, se configurato, al backend API sulla LAN.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -48,6 +50,8 @@
 	<string>RestaAI può aggiornare Apple Salute quando registri una pesata dall’app.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Resta può usare la posizione quando in uso per funzioni che dipendono dal luogo (es. suggerimenti contestuali). Puoi negare l’accesso in qualsiasi momento.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Resta può usare la posizione anche in background per valutare il contesto in modo efficiente e avvisarti in locale solo quando è pertinente (es. rischio di uscire dal piano alimentare). Puoi negare o revocare l’accesso in Impostazioni.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Resta usa il Bluetooth per contesto aggregato (es. auto, cuffie) utile al coaching nutrizionale, senza tracciare la tua posizione.</string>
 	<key>NSCalendarsUsageDescription</key>
@@ -64,9 +68,18 @@
 	<string>RestaAI può salvare immagini generate o elaborate dall'app nella tua libreria foto.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>Resta invia notifiche locali solo quando il contesto suggerisce un rischio nutrizionale pertinente, così puoi intervenire subito.</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.resta.ai.sensor.refresh</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>location</string>
+		<string>fetch</string>
+		<string>processing</string>
 	</array>
 	<key>UIAppFonts</key>
 	<array>

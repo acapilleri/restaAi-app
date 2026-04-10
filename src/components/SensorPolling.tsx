@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useSensorFusion } from '../context/SensorFusionContext';
 import { collectAndSend } from '../services/SensorBundleService';
@@ -20,17 +21,22 @@ export function SensorPolling() {
   useEffect(() => {
     if (!token) return;
 
-    const run = () => {
+    const run = async () => {
       const llm = llmRef.current;
       if (llm?.isGenerating) return;
-      void collectAndSend(llm);
+      const ctx = await collectAndSend(llm);
+      if (ctx?.should_intervene) {
+        Alert.alert('🍽️ Resta', ctx.intervention_reason ?? ctx.key_insight);
+      }
     };
 
     /** Ritarda il primo ciclo: evita competizione con cold start / ExecuTorch e riduce rischio crash in release. */
     const bootDelayMs = 5000;
     const bootTimer = setTimeout(() => {
-      run();
-      intervalRef.current = setInterval(run, 5 * 60 * 1000);
+      void run();
+      intervalRef.current = setInterval(() => {
+        void run();
+      }, 5 * 60 * 1000);
     }, bootDelayMs);
 
     return () => {

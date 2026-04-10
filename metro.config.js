@@ -15,6 +15,7 @@ const base = getDefaultConfig(__dirname);
 
 const config = mergeConfig(base, {
   resolver: {
+    assetExts: [...base.resolver.assetExts, 'pte'],
     resolveRequest: (context, moduleName, platform) => {
       if (moduleName === 'react-native-reanimated') {
         return {
